@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Accent" />
+    <style name="Accent.Purple">
+        <item name="colorPrimary">#7B3FE4</item>
+        <item name="colorSecondary">#7B3FE4</item>
+        <item name="colorPrimaryContainer">#E9DDFF</item>
+        <item name="colorOnPrimaryContainer">#22005D</item>
+        <item name="colorSecondaryContainer">#E9DDFF</item>
+        <item name="colorOnSecondaryContainer">#22005D</item>
+    </style>
+    <style name="Accent.Blue">
+        <item name="colorPrimary">#1E6FD9</item>
+        <item name="colorSecondary">#1E6FD9</item>
+        <item name="colorPrimaryContainer">#D6E3FF</item>
+        <item name="colorOnPrimaryContainer">#001B3E</item>
+        <item name="colorSecondaryContainer">#D6E3FF</item>
+        <item name="colorOnSecondaryContainer">#001B3E</item>
+    </style>
+    <style name="Accent.Green">
+        <item name="colorPrimary">#138A5E</item>
+        <item name="colorSecondary">#138A5E</item>
+        <item name="colorPrimaryContainer">#A6F2CD</item>
+        <item name="colorOnPrimaryContainer">#002114</item>
+        <item name="colorSecondaryContainer">#A6F2CD</item>
+        <item name="colorOnSecondaryContainer">#002114</item>
+    </style>
+    <style name="Accent.Orange">
+        <item name="colorPrimary">#E0661B</item>
+        <item name="colorSecondary">#E0661B</item>
+        <item name="colorPrimaryContainer">#FFDBCB</item>
+        <item name="colorOnPrimaryContainer">#341000</item>
+        <item name="colorSecondaryContainer">#FFDBCB</item>
+        <item name="colorOnSecondaryContainer">#341000</item>
+    </style>
+    <style name="Accent.Rose">
+        <item name="colorPrimary">#D63A6E</item>
+        <item name="colorSecondary">#D63A6E</item>
+        <item name="colorPrimaryContainer">#FFD9E1</item>
+        <item name="colorOnPrimaryContainer">#3F0019</item>
+        <item name="colorSecondaryContainer">#FFD9E1</item>
+        <item name="colorOnSecondaryContainer">#3F0019</item>
+    </style>
+    <style name="Accent.Graphite">
+        <item name="colorPrimary">#4A5568</item>
+        <item name="colorSecondary">#4A5568</item>
+        <item name="colorPrimaryContainer">#DDE3EA</item>
+        <item name="colorOnPrimaryContainer">#161C22</item>
+        <item name="colorSecondaryContainer">#DDE3EA</item>
+        <item name="colorOnSecondaryContainer">#161C22</item>
+    </style>
+</resources>

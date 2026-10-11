@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory
+        app:iconSpaceReserved="false"
+        app:title="@string/cat_server">
+        <Preference
+            app:iconSpaceReserved="false"
+            app:key="servers"
+            app:summary="@string/servers_summary"
+            app:title="@string/servers" />
+        <ListPreference
+            app:defaultValue="chat"
+            app:entries="@array/start_entries"
+            app:entryValues="@array/start_values"
+            app:iconSpaceReserved="false"
+            app:key="start_page"
+            app:title="@string/start_page"
+            app:useSimpleSummaryProvider="true" />
+        <EditTextPreference
+            app:defaultValue="/"
+            app:iconSpaceReserved="false"
+            app:key="custom_start_path"
+            app:title="@string/custom_start_path"
+            app:useSimpleSummaryProvider="true" />
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:iconSpaceReserved="false"
+            app:key="fast_nav"
+            app:summary="@string/fast_nav_summary"
+            app:title="@string/fast_nav" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:iconSpaceReserved="false"
+        app:title="@string/cat_look">
+        <ListPreference
+            app:defaultValue="system"
+            app:entries="@array/theme_entries"
+            app:entryValues="@array/theme_values"
+            app:iconSpaceReserved="false"
+            app:key="theme"
+            app:title="@string/theme"
+            app:useSimpleSummaryProvider="true" />
+        <ListPreference
+            app:defaultValue="purple"
+            app:entries="@array/accent_entries"
+            app:entryValues="@array/accent_values"
+            app:iconSpaceReserved="false"
+            app:key="accent"
+            app:title="@string/accent"
+            app:useSimpleSummaryProvider="true" />
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:iconSpaceReserved="false"
+            app:key="force_dark_pages"
+            app:summary="@string/force_dark_pages_summary"
+            app:title="@string/force_dark_pages" />
+        <SeekBarPreference
+            android:max="200"
+            app:defaultValue="100"
+            app:iconSpaceReserved="false"
+            app:key="text_zoom"
+            app:min="50"
+            app:seekBarIncrement="10"
+            app:showSeekBarValue="true"
+            app:title="@string/text_zoom" />
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:iconSpaceReserved="false"
+            app:key="show_toolbar"
+            app:summary="@string/show_toolbar_summary"
+            app:title="@string/show_toolbar" />
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:iconSpaceReserved="false"
+            app:key="show_bottom_bar"
+            app:title="@string/show_bottom_bar" />
+        <MultiSelectListPreference
+            app:defaultValue="@array/default_shortcuts"
+            app:dependency="show_bottom_bar"
+            app:entries="@array/shortcut_entries"
+            app:entryValues="@array/shortcut_values"
+            app:iconSpaceReserved="false"
+            app:key="bottom_shortcuts"
+            app:title="@string/bottom_shortcuts" />
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:iconSpaceReserved="false"
+            app:key="fullscreen"
+            app:summary="@string/fullscreen_summary"
+            app:title="@string/fullscreen" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:iconSpaceReserved="false"
+        app:title="@string/cat_behavior">
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:iconSpaceReserved="false"
+            app:key="pull_to_refresh"
+            app:summary="@string/pull_to_refresh_summary"
+            app:title="@string/pull_to_refresh" />
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:iconSpaceReserved="false"
+            app:key="keep_screen_on"
+            app:title="@string/keep_screen_on" />
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:iconSpaceReserved="false"
+            app:key="desktop_mode"
+            app:summary="@string/desktop_mode_summary"
+            app:title="@string/desktop_mode" />
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:iconSpaceReserved="false"
+            app:key="external_in_browser"
+            app:summary="@string/external_in_browser_summary"
+            app:title="@string/external_in_browser" />
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:iconSpaceReserved="false"
+            app:key="double_back_exit"
+            app:title="@string/double_back_exit" />
+        <EditTextPreference
+            app:iconSpaceReserved="false"
+            app:key="custom_css"
+            app:title="@string/custom_css" />
+        <EditTextPreference
+            app:iconSpaceReserved="false"
+            app:key="ua_suffix"
+            app:title="@string/ua_suffix"
+            app:useSimpleSummaryProvider="true" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:iconSpaceReserved="false"
+        app:title="@string/cat_security">
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:iconSpaceReserved="false"
+            app:key="app_lock"
+            app:summary="@string/app_lock_summary"
+            app:title="@string/app_lock" />
+        <ListPreference
+            app:defaultValue="60"
+            app:dependency="app_lock"
+            app:entries="@array/lock_entries"
+            app:entryValues="@array/lock_values"
+            app:iconSpaceReserved="false"
+            app:key="lock_timeout"
+            app:title="@string/lock_timeout"
+            app:useSimpleSummaryProvider="true" />
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:iconSpaceReserved="false"
+            app:key="privacy_screen"
+            app:summary="@string/privacy_screen_summary"
+            app:title="@string/privacy_screen" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:iconSpaceReserved="false"
+        app:title="@string/cat_data">
+        <Preference
+            app:iconSpaceReserved="false"
+            app:key="clear_cache"
+            app:summary="@string/clear_cache_summary"
+            app:title="@string/clear_cache" />
+        <Preference
+            app:iconSpaceReserved="false"
+            app:key="sign_out"
+            app:summary="@string/sign_out_summary"
+            app:title="@string/sign_out" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:iconSpaceReserved="false"
+        app:title="@string/cat_about">
+        <Preference
+            app:iconSpaceReserved="false"
+            app:key="about"
+            app:selectable="false"
+            app:title="@string/about" />
+        <Preference
+            app:iconSpaceReserved="false"
+            app:key="source"
+            app:summary="@string/source_url"
+            app:title="@string/source" />
+    </PreferenceCategory>
+</PreferenceScreen>
