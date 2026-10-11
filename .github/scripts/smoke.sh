@@ -32,7 +32,7 @@ tap "$PKG:id/url"
 adb shell input text "http://10.0.2.2:8000"
 sleep 1
 adb exec-out screencap -p > "$OUT/2-add-server.png"
-tap "Save"
+adb shell input keyevent 66 # Enter = Done, saves the server
 sleep 8
 adb exec-out screencap -p > "$OUT/3-dashboard-page.png"
 

@@ -3,11 +3,13 @@ package io.github.rayvader.kirocrew
 import android.content.Context
 import android.content.DialogInterface
 import android.os.Bundle
+import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.EditorInfo
 import android.widget.ArrayAdapter
 import android.widget.ImageView
 import android.widget.ListView
@@ -142,7 +144,8 @@ class ProfilesActivity : AppCompatActivity() {
             editorUrlField = null
         }
         dialog.setOnShowListener {
-            dialog.getButton(DialogInterface.BUTTON_POSITIVE).setOnClickListener {
+            val saveButton = dialog.getButton(DialogInterface.BUTTON_POSITIVE)
+            saveButton.setOnClickListener {
                 val url = UrlTools.normalizeServerUrl(urlField.text?.toString().orEmpty())
                 if (url == null) {
                     urlLayout.error = getString(R.string.bad_url)
@@ -152,6 +155,13 @@ class ProfilesActivity : AppCompatActivity() {
                 saveProfile(existing?.id, name, url)
                 dialog.dismiss()
                 finish()
+            }
+            // Done on the keyboard (or Enter on a hardware keyboard) saves too.
+            urlField.setOnEditorActionListener { _, actionId, event ->
+                val enter = actionId == EditorInfo.IME_ACTION_DONE ||
+                    (event?.keyCode == KeyEvent.KEYCODE_ENTER && event.action == KeyEvent.ACTION_DOWN)
+                if (enter && dialog.isShowing) saveButton.performClick()
+                enter
             }
         }
         dialog.show()
