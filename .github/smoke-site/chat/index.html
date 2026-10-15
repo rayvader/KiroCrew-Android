@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kiro Crew smoke page</title>
+  <style>
+    body { font-family: sans-serif; background: #1b1530; color: #fff; padding: 24px; }
+    h1 { font-size: 28px; }
+    p { font-size: 20px; }
+  </style>
+</head>
+<body>
+  <h1>Kiro Crew smoke page</h1>
+  <p id="bridge">Bridge missing</p>
+  <p id="ua"></p>
+  <script>
+    var b = document.getElementById('bridge');
+    if (window.KiroCrewAndroid) b.textContent = 'Bridge OK ' + window.KiroCrewAndroid.appVersion();
+    document.getElementById('ua').textContent = /KiroCrewAndroid\//.test(navigator.userAgent) ? 'User agent OK' : 'User agent missing';
+  </script>
+</body>
+</html>

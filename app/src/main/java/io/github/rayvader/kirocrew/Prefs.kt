@@ -1,0 +1,83 @@
+package io.github.rayvader.kirocrew
+
+import android.content.Context
+import android.content.SharedPreferences
+import androidx.core.content.edit
+import androidx.preference.PreferenceManager
+import io.github.rayvader.kirocrew.core.Profile
+import io.github.rayvader.kirocrew.core.ProfileCodec
+import io.github.rayvader.kirocrew.core.Shortcut
+
+/** Every user setting in one place. Keys match res/xml/preferences.xml. */
+class Prefs(context: Context) {
+    val sp: SharedPreferences = PreferenceManager.getDefaultSharedPreferences(context.applicationContext)
+
+    var profiles: List<Profile>
+        get() = ProfileCodec.decode(sp.getString(K_PROFILES, null))
+        set(value) = sp.edit { putString(K_PROFILES, ProfileCodec.encode(value)) }
+
+    var activeProfileId: String?
+        get() = sp.getString(K_ACTIVE, null)
+        set(value) = sp.edit { putString(K_ACTIVE, value) }
+
+    val activeProfile: Profile?
+        get() {
+            val list = profiles
+            return list.firstOrNull { it.id == activeProfileId } ?: list.firstOrNull()
+        }
+
+    /** A one-time URL to open after scanning a sign-in QR code. */
+    var pendingOpenUrl: String?
+        get() = sp.getString(K_PENDING_OPEN, null)
+        set(value) = sp.edit { putString(K_PENDING_OPEN, value) }
+
+    var pendingClearCache: Boolean
+        get() = sp.getBoolean(K_PENDING_CLEAR, false)
+        set(value) = sp.edit { putBoolean(K_PENDING_CLEAR, value) }
+
+    var pendingReload: Boolean
+        get() = sp.getBoolean(K_PENDING_RELOAD, false)
+        set(value) = sp.edit { putBoolean(K_PENDING_RELOAD, value) }
+
+    val theme: String get() = sp.getString("theme", "system") ?: "system"
+    val accent: String get() = sp.getString("accent", "purple") ?: "purple"
+    val forceDarkPages: Boolean get() = sp.getBoolean("force_dark_pages", false)
+    val textZoom: Int get() = sp.getInt("text_zoom", 100).coerceIn(50, 200)
+    val showToolbar: Boolean get() = sp.getBoolean("show_toolbar", true)
+    val showBottomBar: Boolean get() = sp.getBoolean("show_bottom_bar", true)
+    val fullscreen: Boolean get() = sp.getBoolean("fullscreen", false)
+    val pullToRefresh: Boolean get() = sp.getBoolean("pull_to_refresh", false)
+    val keepScreenOn: Boolean get() = sp.getBoolean("keep_screen_on", false)
+    val desktopMode: Boolean get() = sp.getBoolean("desktop_mode", false)
+    val fastNav: Boolean get() = sp.getBoolean("fast_nav", true)
+    val externalInBrowser: Boolean get() = sp.getBoolean("external_in_browser", true)
+    val doubleBackExit: Boolean get() = sp.getBoolean("double_back_exit", true)
+    val customCss: String get() = sp.getString("custom_css", "") ?: ""
+    val uaSuffix: String get() = sp.getString("ua_suffix", "") ?: ""
+    val appLock: Boolean get() = sp.getBoolean("app_lock", false)
+    val lockTimeoutMs: Long get() = ((sp.getString("lock_timeout", "60") ?: "60").toLongOrNull() ?: 60L) * 1000L
+    val privacyScreen: Boolean get() = sp.getBoolean("privacy_screen", false)
+    val startPage: String get() = sp.getString("start_page", "chat") ?: "chat"
+    val customStartPath: String get() = sp.getString("custom_start_path", "/") ?: "/"
+
+    val bottomShortcuts: List<Shortcut>
+        get() {
+            val keys = sp.getStringSet("bottom_shortcuts", null) ?: return Shortcut.DEFAULT_BAR
+            return keys.mapNotNull { Shortcut.fromKey(it) }.sortedBy { it.ordinal }.take(MAX_BAR_ITEMS)
+        }
+
+    fun startPath(): String = when (startPage) {
+        "custom" -> customStartPath.ifBlank { "/" }
+        "root" -> "/"
+        else -> Shortcut.fromKey(startPage)?.path ?: Shortcut.CHAT.path
+    }
+
+    companion object {
+        const val MAX_BAR_ITEMS = 5
+        private const val K_PROFILES = "profiles_v1"
+        private const val K_ACTIVE = "active_profile"
+        private const val K_PENDING_OPEN = "pending_open_url"
+        private const val K_PENDING_CLEAR = "pending_clear_cache"
+        private const val K_PENDING_RELOAD = "pending_reload"
+    }
+}

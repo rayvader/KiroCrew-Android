@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="theme_entries">
+        <item>Follow system</item>
+        <item>Light</item>
+        <item>Dark</item>
+    </string-array>
+    <string-array name="theme_values">
+        <item>system</item>
+        <item>light</item>
+        <item>dark</item>
+    </string-array>
+
+    <string-array name="accent_entries">
+        <item>Kiro purple</item>
+        <item>Ocean blue</item>
+        <item>Emerald</item>
+        <item>Sunset orange</item>
+        <item>Rose</item>
+        <item>Graphite</item>
+    </string-array>
+    <string-array name="accent_values">
+        <item>purple</item>
+        <item>blue</item>
+        <item>green</item>
+        <item>orange</item>
+        <item>rose</item>
+        <item>graphite</item>
+    </string-array>
+
+    <string-array name="start_entries">
+        <item>Chat</item>
+        <item>Schedule</item>
+        <item>Artifacts</item>
+        <item>Notifications</item>
+        <item>Customize</item>
+        <item>Apps</item>
+        <item>Settings</item>
+        <item>Dashboard home</item>
+        <item>Custom path</item>
+    </string-array>
+    <string-array name="start_values">
+        <item>chat</item>
+        <item>schedule</item>
+        <item>artifacts</item>
+        <item>notifications</item>
+        <item>customize</item>
+        <item>apps</item>
+        <item>settings</item>
+        <item>root</item>
+        <item>custom</item>
+    </string-array>
+
+    <string-array name="shortcut_entries">
+        <item>Chat</item>
+        <item>Schedule</item>
+        <item>Artifacts</item>
+        <item>Notifications</item>
+        <item>Customize</item>
+        <item>Apps</item>
+        <item>Settings</item>
+        <item>Logs</item>
+        <item>Developer</item>
+    </string-array>
+    <string-array name="shortcut_values">
+        <item>chat</item>
+        <item>schedule</item>
+        <item>artifacts</item>
+        <item>notifications</item>
+        <item>customize</item>
+        <item>apps</item>
+        <item>settings</item>
+        <item>logs</item>
+        <item>developer</item>
+    </string-array>
+    <string-array name="default_shortcuts">
+        <item>chat</item>
+        <item>schedule</item>
+        <item>artifacts</item>
+        <item>notifications</item>
+        <item>settings</item>
+    </string-array>
+
+    <string-array name="lock_entries">
+        <item>Right away</item>
+        <item>1 minute</item>
+        <item>5 minutes</item>
+        <item>30 minutes</item>
+    </string-array>
+    <string-array name="lock_values">
+        <item>0</item>
+        <item>60</item>
+        <item>300</item>
+        <item>1800</item>
+    </string-array>
+</resources>

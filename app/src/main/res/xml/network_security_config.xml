@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Kiro Crew usually runs on a private host reached over Tailscale or a LAN with
+  plain http://host:5476, so cleartext is allowed. Tailscale encrypts the link
+  itself; the app warns when plain HTTP goes to a public host.
+  User-installed CAs are trusted so self-hosted HTTPS with a private CA works.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
