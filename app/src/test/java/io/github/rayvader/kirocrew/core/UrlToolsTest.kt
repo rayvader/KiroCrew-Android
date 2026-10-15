@@ -10,7 +10,7 @@ class UrlToolsTest {
 
     @Test
     fun normalize_hostWithPortUsesHttp() {
-        assertEquals("http://ip-1.tail79.ts.net:5476", UrlTools.normalizeServerUrl("ip-1.tail79.ts.net:5476"))
+        assertEquals("http://ip-1.tailnet.ts.net:5476", UrlTools.normalizeServerUrl("ip-1.tailnet.ts.net:5476"))
         assertEquals("http://100.101.102.103", UrlTools.normalizeServerUrl(" 100.101.102.103 "))
         assertEquals("http://localhost:5476", UrlTools.normalizeServerUrl("localhost:5476/"))
     }
@@ -63,7 +63,7 @@ class UrlToolsTest {
         assertTrue(UrlTools.isUnencryptedPublic("http://example.com"))
         assertTrue(UrlTools.isUnencryptedPublic("http://8.8.8.8:5476"))
         assertFalse(UrlTools.isUnencryptedPublic("https://example.com"))
-        assertFalse(UrlTools.isUnencryptedPublic("http://host.tail79.ts.net:5476"))
+        assertFalse(UrlTools.isUnencryptedPublic("http://host.tailnet.ts.net:5476"))
         assertFalse(UrlTools.isUnencryptedPublic("http://100.70.1.2:5476"))
         assertFalse(UrlTools.isUnencryptedPublic("http://192.168.1.20:5476"))
     }

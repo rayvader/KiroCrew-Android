@@ -1,54 +1,122 @@
 # Kiro Crew for Android
 
-The full Kiro Crew web dashboard in an Android app, with native extras and lots of ways to make it yours.
+[![Android APK](https://github.com/rayvader/KiroCrew-Android/actions/workflows/android.yml/badge.svg)](https://github.com/rayvader/KiroCrew-Android/actions/workflows/android.yml)
+[![Latest release](https://img.shields.io/github/v/release/rayvader/KiroCrew-Android)](https://github.com/rayvader/KiroCrew-Android/releases/latest)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![Android 8.0+](https://img.shields.io/badge/Android-8.0%2B-3DDC84)
+
+Your Kiro Crew dashboard on your phone. The full web dashboard runs inside the app, with native extras and many ways to make it yours.
+
+> Unofficial community app. It needs your own running Kiro Crew gateway.
+
+## Contents
+
+- [Install](#install)
+- [Connect to your dashboard](#connect-to-your-dashboard)
+- [What works like the browser](#what-works-like-the-browser)
+- [Customization](#customization)
+- [Deep links and shortcuts](#deep-links-and-shortcuts)
+- [Troubleshooting](#troubleshooting)
+- [Security](#security)
+- [Build from source](#build-from-source)
+- [Contributing](#contributing)
+- [License](#license)
 
 ## Install
 
-1. Open the latest release on your phone: [Releases](https://github.com/rayvader/KiroCrew-Android/releases/latest).
-2. Download `KiroCrew-<version>.apk` and open it. Allow "install unknown apps" for your browser when asked.
-3. New builds install over old ones and keep your settings (every release is signed with the same key).
+1. On your phone, open the [latest release](https://github.com/rayvader/KiroCrew-Android/releases/latest).
+2. Download `KiroCrew-<version>.apk` and open it.
+3. When asked, allow "install unknown apps" for your browser.
 
-## Connect
+Needs Android 8.0 or newer. Every release is signed with the same key, so new builds install over old ones and keep your settings.
 
-- **Tailscale (recommended):** turn on Tailscale on the phone, then add `http://<host>.<tailnet>.ts.net:5476`.
-- **QR code:** in the dashboard open **Connect your phone**, then tap **Scan QR code** in the app. A sign-in link is opened once so the login cookie is set.
-- **Typing tip:** `host:5476` becomes `http://host:5476`; a bare `kiro.example.com` becomes `https://kiro.example.com`.
+## Connect to your dashboard
+
+| Way | Steps |
+|---|---|
+| Tailscale (best) | Turn on Tailscale on the phone. Add `http://<host>.<tailnet>.ts.net:5476`. |
+| QR code | In the dashboard open **Connect your phone**. In the app tap **Scan QR code**. |
+| Your own domain | Add `kiro.example.com`. It becomes `https://kiro.example.com`. |
+
+Typing shortcuts: `host:5476` becomes `http://host:5476`. A bare domain becomes `https://`.
 
 You can save several servers and switch between them from the top bar.
 
 ## What works like the browser
 
-Chat with live streaming (WebSocket), file upload from the phone, downloads (normal, `blob:` and `data:`),
-voice input (needs HTTPS — browsers only allow the microphone on secure pages), full-screen video,
-links to other sites in your browser, and the login kept between launches.
-Folding or rotating the phone does not reload the page.
+- Chat with live streaming (WebSocket)
+- File upload from the phone
+- Downloads: normal, `blob:` and `data:`
+- Voice input (needs HTTPS, because browsers only allow the microphone on secure pages)
+- Full-screen video
+- Links to other sites open in your browser
+- Login kept between launches
+- Folding or turning the phone does not reload the page
 
-## Customization (Settings in the app menu)
+## Customization
+
+Open **Settings** from the app menu.
 
 | Area | Options |
 |---|---|
 | Server | Several servers, start page (or a custom path), fast page switching |
-| Look | Light/dark/system theme, 6 accent colors, force-dark pages, text size 50–200 %, top bar on/off, bottom bar on/off, pick up to 5 bottom-bar pages, full screen |
+| Look | Light, dark or system theme. 6 accent colors. Force-dark pages. Text size 50–200 %. Top bar and bottom bar on or off. Pick up to 5 bottom-bar pages. Full screen. |
 | Behavior | Pull to refresh, keep screen on, desktop mode, open other sites in browser, double back to exit, custom CSS, user-agent suffix |
-| Security | App lock (fingerprint/face/screen lock) with timeout, privacy screen (no screenshots, hidden in recents) |
-| Data | Clear cache, sign out (cookies and site data) |
+| Security | App lock (fingerprint, face or screen lock) with timeout. Privacy screen (no screenshots, hidden in recents). |
+| Data | Clear cache. Sign out (cookies and site data). |
 
-Long-press the app icon for shortcuts to your bottom-bar pages. `kirocrew://open?path=/schedule` links open a page directly.
+## Deep links and shortcuts
 
-## Security notes
+- Long-press the app icon for shortcuts to your bottom-bar pages.
+- `kirocrew://open?path=/schedule` opens a page directly.
 
-- Plain `http://` is allowed so Tailscale and LAN hosts work. Tailscale encrypts the link itself; the app shows a warning when plain HTTP goes to a public host.
+## Troubleshooting
+
+| Problem | Fix |
+|---|---|
+| Page does not load | Check Tailscale is on. Check the address and the port (default `5476`). |
+| Warning about plain `http` | You used `http` with a public host. Use `https`, or Tailscale. |
+| Microphone does not work | Use an `https` address. Browsers block the mic on plain `http`. |
+| QR scan fails | Make a fresh code in **Connect your phone**. Codes are single-use. |
+| Update will not install | The old app was signed with a different key. Uninstall it, then install the new one. |
+| Page looks wrong after a theme change | Settings → Data → Clear cache. |
+
+## Security
+
+- Plain `http://` is allowed so Tailscale and LAN hosts work. Tailscale encrypts the link itself. The app warns you when plain HTTP goes to a public host.
 - User-installed certificate authorities are trusted, so self-hosted HTTPS with a private CA works.
 - The page can call one small bridge (`window.KiroCrewAndroid`) to save downloads. It only answers pages from your active server.
+- App lock and privacy screen are optional, under Settings → Security.
 
-## Build
+Found a problem? See [SECURITY.md](SECURITY.md).
 
-CI ([workflow](.github/workflows/android.yml)) runs the unit tests, builds the release APK and publishes a GitHub release on every push.
+## Build from source
 
-Local build needs JDK 17 and the Android SDK:
+You need JDK 17 and the Android SDK.
 
 ```bash
 ./gradlew testDebugUnitTest assembleRelease
 ```
 
-Without the signing secrets the release APK is signed with the debug key.
+The APK lands in `app/build/outputs/apk/release/`. Without signing secrets it is signed with the debug key.
+
+CI ([workflow](.github/workflows/android.yml)) runs the unit tests, builds the APK, runs a smoke test on an Android 14 emulator, and publishes a GitHub release on every push to `main`.
+
+### Signing your own builds (forks)
+
+Add these repository secrets so CI signs with your key:
+
+| Secret | Meaning |
+|---|---|
+| `SIGNING_KEYSTORE_B64` | Your PKCS12 keystore, base64 encoded |
+| `SIGNING_STORE_PASSWORD` | Its password (also used for the key) |
+
+Keep the keystore safe. If you lose it, users must uninstall before they can update.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## License
+
+[MIT](LICENSE)
