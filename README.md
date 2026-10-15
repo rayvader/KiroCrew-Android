@@ -77,7 +77,7 @@ Open **Settings** from the app menu.
 | Page does not load | Check Tailscale is on. Check the address and the port (default `5476`). |
 | Warning about plain `http` | You used `http` with a public host. Use `https`, or Tailscale. |
 | Microphone does not work | Use an `https` address. Browsers block the mic on plain `http`. |
-| QR scan fails | Make a fresh code in **Connect your phone**. Codes are single-use. |
+| QR scan fails | Make a fresh code in **Connect your phone**. |
 | Update will not install | The old app was signed with a different key. Uninstall it, then install the new one. |
 | Page looks wrong after a theme change | Settings → Data → Clear cache. |
 

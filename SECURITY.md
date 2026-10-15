@@ -5,7 +5,7 @@
 Please do not open a public issue for a security bug.
 Use GitHub's private reporting: **Security → Report a vulnerability** on this repository.
 
-Include what you did, what happened, and the app version (Settings → About, or the release name).
+Include what you did, what happened, and the app version (the release name, for example `v1.0.5`).
 
 ## Scope
 
