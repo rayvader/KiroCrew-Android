@@ -18,6 +18,9 @@ android {
         targetSdk = 34
         versionCode = buildNumber
         versionName = "1.0.$buildNumber"
+        // Where the app looks for updates. A fork built on GitHub Actions checks its own releases.
+        val updateRepo = System.getenv("GITHUB_REPOSITORY") ?: "rayvader/KiroCrew-Android"
+        buildConfigField("String", "UPDATE_REPO", "\"$updateRepo\"")
     }
 
     signingConfigs {
@@ -71,6 +74,9 @@ dependencies {
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
     implementation("androidx.biometric:biometric:1.1.0")
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
 
     testImplementation("junit:junit:4.13.2")
+    // Real org.json for plain-JVM unit tests (the Android one is only stubs there).
+    testImplementation("org.json:json:20240303")
 }

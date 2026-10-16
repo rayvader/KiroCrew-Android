@@ -81,6 +81,21 @@
         <item>settings</item>
     </string-array>
 
+    <string-array name="alert_mode_entries">
+        <item>Only while the app is open</item>
+        <item>Every 15 minutes</item>
+        <item>Every 30 minutes</item>
+        <item>Every hour</item>
+        <item>Instant (uses more battery)</item>
+    </string-array>
+    <string-array name="alert_mode_values">
+        <item>off</item>
+        <item>15</item>
+        <item>30</item>
+        <item>60</item>
+        <item>instant</item>
+    </string-array>
+
     <string-array name="lock_entries">
         <item>Right away</item>
         <item>1 minute</item>

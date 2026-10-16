@@ -23,6 +23,8 @@ tap() {
 
 adb logcat -c || true
 adb install -r "$APK"
+# Grant up front so Android's permission dialog does not cover the screens below.
+adb shell pm grant "$PKG" android.permission.POST_NOTIFICATIONS
 adb shell am start -W -n "$PKG/.MainActivity"
 sleep 6
 adb exec-out screencap -p > "$OUT/1-welcome.png"
@@ -47,6 +49,17 @@ if ! adb shell pidof "$PKG" >/dev/null; then
 fi
 grep -q "Kiro Crew smoke page" "$OUT/page-ui.xml" || { echo "Test page did not load in the WebView"; exit 1; }
 grep -q "Bridge OK" "$OUT/page-ui.xml" || { echo "Page bridge did not answer"; exit 1; }
+grep -q "Notify OK granted" "$OUT/page-ui.xml" || { echo "Notification stand-in missing or permission not granted"; exit 1; }
+
+# Background the app: the page raises a "chat finished" toast, which must become an Android notification.
+adb shell input keyevent KEYCODE_HOME
+sleep 5
+adb shell dumpsys notification --noredact > "$OUT/notifications.txt" || true
+adb shell cmd statusbar expand-notifications || true
+sleep 2
+adb exec-out screencap -p > "$OUT/4-notification.png"
+adb shell cmd statusbar collapse || true
+grep -q "Smoke chat finished" "$OUT/notifications.txt" || { echo "Page notification did not reach Android"; exit 1; }
 
 # Deep link into another page must not crash the app.
 adb shell am start -W -a android.intent.action.VIEW -d "kirocrew://open?path=/schedule" "$PKG" >/dev/null

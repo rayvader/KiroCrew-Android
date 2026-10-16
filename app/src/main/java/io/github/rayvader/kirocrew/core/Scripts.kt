@@ -5,6 +5,60 @@ object Scripts {
 
     const val BRIDGE = "KiroCrewAndroid"
 
+    /** Message channel for notifications. WebView only gives it to frames from the saved servers. */
+    const val NOTIFY_CHANNEL = "KiroCrewNotify"
+
+    /**
+     * WebView has no `window.Notification`, so the dashboard's own toasts
+     * ("chat finished", new bell notes) would do nothing. This stand-in sends
+     * them to the app, which posts real Android notifications.
+     */
+    val NOTIFY_SHIM = """
+        (function(){
+          var P=window.$NOTIFY_CHANNEL;
+          if(!P||window.__kcaNotify)return;window.__kcaNotify=1;
+          var A=window.$BRIDGE,cache='default',waiters=[];
+          var send=function(o){try{P.postMessage(JSON.stringify(o));}catch(e){}};
+          P.addEventListener('message',function(ev){
+            var m;try{m=JSON.parse(ev.data);}catch(e){return;}
+            if(!m||m.op!=='permission')return;
+            cache=String(m.value);var w=waiters;waiters=[];
+            w.forEach(function(f){try{f(cache);}catch(e){}});
+          });
+          var perm=function(){
+            try{if(A&&A.notificationPermission)cache=String(A.notificationPermission());}catch(e){}
+            return cache;
+          };
+          function N(title,o){
+            if(!(this instanceof N))throw new TypeError("Failed to construct 'Notification': Please use the 'new' operator.");
+            o=o||{};
+            this.title=String(title);
+            this.body=o.body==null?'':String(o.body);
+            this.tag=o.tag==null?'':String(o.tag);
+            this.data=o.data===undefined?null:o.data;
+            this.icon=o.icon||'';this.silent=!!o.silent;
+            this.onclick=null;this.onclose=null;this.onerror=null;this.onshow=null;
+            if(perm()==='granted')send({op:'notify',title:this.title.slice(0,200),body:this.body.slice(0,1000),tag:this.tag.slice(0,200)});
+          }
+          N.prototype.close=function(){send({op:'close',tag:this.tag});};
+          N.prototype.addEventListener=function(){};
+          N.prototype.removeEventListener=function(){};
+          N.prototype.dispatchEvent=function(){return true;};
+          Object.defineProperty(N,'permission',{get:perm,enumerable:true});
+          N.maxActions=0;
+          N.requestPermission=function(cb){
+            return new Promise(function(resolve){
+              var done=function(p){if(typeof cb==='function'){try{cb(p);}catch(e){}}resolve(p);};
+              var now=perm();
+              if(now!=='default'){done(now);return;}
+              waiters.push(done);send({op:'request'});
+            });
+          };
+          try{Object.defineProperty(window,'Notification',{value:N,writable:true,configurable:true});}
+          catch(e){window.Notification=N;}
+        })();
+    """.trimIndent()
+
     /** Adds, updates or removes the user's custom stylesheet. */
     fun customCss(css: String): String =
         "(function(){var id='kirocrew-android-css';var el=document.getElementById(id);" +

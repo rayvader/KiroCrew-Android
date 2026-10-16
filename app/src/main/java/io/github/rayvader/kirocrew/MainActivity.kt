@@ -10,6 +10,7 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
 import android.view.Menu
@@ -45,7 +46,12 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.isVisible
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import androidx.lifecycle.Lifecycle
+import androidx.webkit.JavaScriptReplyProxy
+import androidx.webkit.ScriptHandler
+import androidx.webkit.WebMessageCompat
 import androidx.webkit.WebSettingsCompat
+import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.bottomnavigation.BottomNavigationView
@@ -54,10 +60,13 @@ import com.google.android.material.color.MaterialColors
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.journeyapps.barcodescanner.ScanContract
+import io.github.rayvader.kirocrew.core.LiveTags
 import io.github.rayvader.kirocrew.core.Profile
 import io.github.rayvader.kirocrew.core.Scripts
 import io.github.rayvader.kirocrew.core.Shortcut
 import io.github.rayvader.kirocrew.core.UrlTools
+import org.json.JSONException
+import org.json.JSONObject
 import java.util.UUID
 
 class MainActivity : AppCompatActivity() {
@@ -80,6 +89,12 @@ class MainActivity : AppCompatActivity() {
     private lateinit var fullscreenContainer: FrameLayout
     private lateinit var appLock: AppLock
     private lateinit var downloads: DownloadHelper
+    private lateinit var updates: UpdateFlow
+
+    private var startScript: ScriptHandler? = null
+    private var pageHooksKey: String? = null
+    private val permissionReplies = mutableListOf<JavaScriptReplyProxy>()
+    private var askingNotifyPermission = false
 
     private var defaultUserAgent = ""
     private var customView: View? = null
@@ -120,6 +135,15 @@ class MainActivity : AppCompatActivity() {
         result.contents?.let { handleScannedText(it) }
     }
 
+    private val notifyPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) {
+            askingNotifyPermission = false
+            val state = notifyPermissionState()
+            permissionReplies.forEach { reply -> reply.postMessage(permissionMessage(state)) }
+            permissionReplies.clear()
+            AlertScheduler.apply(this)
+        }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         prefs = Prefs(this)
         app = application as KiroCrewApp
@@ -130,8 +154,10 @@ class MainActivity : AppCompatActivity() {
         bindViews()
         setSupportActionBar(toolbar)
         downloads = DownloadHelper(this)
+        updates = UpdateFlow(this)
         appLock = AppLock(this, ::onUnlocked, ::onUnlockFailed)
         configureWebView()
+        refreshPageHooks()
         setupBackHandling()
         swipe.setOnRefreshListener { webView.reload() }
         menuFab.setOnClickListener { showAppMenu(it) }
@@ -151,6 +177,7 @@ class MainActivity : AppCompatActivity() {
             currentServerBase = prefs.profiles.firstOrNull { it.id == loadedProfileId }?.baseUrl
         } else {
             loadInitial(intent)
+            if (intent?.getBooleanExtra(EXTRA_SHOW_UPDATE, false) == true) updates.checkNow()
         }
     }
 
@@ -179,6 +206,7 @@ class MainActivity : AppCompatActivity() {
         }
         if (webViewGone) return
         applySettings()
+        refreshPageHooks()
         processPendingActions()
         val active = prefs.activeProfile
         if (active == null) {
@@ -197,9 +225,15 @@ class MainActivity : AppCompatActivity() {
         }
         refreshLock()
         webView.onResume()
+        app.visibleProfileId = loadedProfileId
+        AlertScheduler.apply(this)
+        UpdateScheduler.apply(this)
+        updates.onResume()
+        if (!lockView.isVisible) updates.autoCheck()
     }
 
     override fun onPause() {
+        app.visibleProfileId = null
         if (!webViewGone) webView.onPause()
         CookieManager.getInstance().flush()
         super.onPause()
@@ -221,7 +255,15 @@ class MainActivity : AppCompatActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        val path = pathFromIntent(intent) ?: return
+        if (intent.getBooleanExtra(EXTRA_SHOW_UPDATE, false)) updates.checkNow()
+        val path = pathFromIntent(intent)
+        // A notification from another saved server switches to that server.
+        val target = profileFromIntent(intent)
+        if (target != null && target.id != loadedProfileId) {
+            loadProfile(target, path ?: prefs.startPath())
+            return
+        }
+        path ?: return
         val active = prefs.activeProfile ?: return
         if (active.id == loadedProfileId) navigateTo(path) else loadProfile(active, path)
     }
@@ -229,12 +271,17 @@ class MainActivity : AppCompatActivity() {
     // ---- Loading -------------------------------------------------------------------------
 
     private fun loadInitial(intent: Intent?) {
-        val active = prefs.activeProfile
+        val active = profileFromIntent(intent) ?: prefs.activeProfile
         if (active == null) {
             showWelcome()
             return
         }
         loadProfile(active, pathFromIntent(intent) ?: prefs.startPath())
+    }
+
+    private fun profileFromIntent(intent: Intent?): Profile? {
+        val id = intent?.getStringExtra(EXTRA_PROFILE) ?: return null
+        return prefs.profiles.firstOrNull { it.id == id }
     }
 
     private fun pathFromIntent(intent: Intent?): String? {
@@ -253,6 +300,8 @@ class MainActivity : AppCompatActivity() {
         supportActionBar?.title = profile.name
         updateBottomNavVisibility()
         insecureHint.isVisible = UrlTools.isUnencryptedPublic(profile.baseUrl)
+        if (isResumedNow()) app.visibleProfileId = profile.id
+        refreshPageHooks()
         webView.loadUrl(UrlTools.buildUrl(profile.baseUrl, path))
     }
 
@@ -381,8 +430,102 @@ class MainActivity : AppCompatActivity() {
     private fun injectPageScripts() {
         webView.evaluateJavascript(Scripts.customCss(prefs.customCss), null)
         webView.evaluateJavascript(Scripts.DOWNLOAD_HOOKS, null)
+        // Normally already installed at document start; this covers WebViews without that feature.
+        webView.evaluateJavascript(Scripts.NOTIFY_SHIM, null)
         if (prefs.desktopMode) webView.evaluateJavascript(Scripts.DESKTOP_VIEWPORT, null)
     }
+
+    // ---- Notifications from the page ---------------------------------------------------------
+
+    /**
+     * Installs the Notification stand-in and its message channel for the saved
+     * servers only. WebView hands the channel to frames from those origins and
+     * no others, so other sites and sandboxed frames cannot post notifications.
+     */
+    private fun refreshPageHooks() {
+        val origins = prefs.profiles.mapNotNull { UrlTools.origin(it.baseUrl) }.toSortedSet()
+        val key = origins.joinToString(" ")
+        if (key == pageHooksKey) return
+        pageHooksKey = key
+        if (!WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) return
+        startScript?.remove()
+        startScript = null
+        WebViewCompat.removeWebMessageListener(webView, Scripts.NOTIFY_CHANNEL)
+        if (origins.isEmpty()) return
+        try {
+            WebViewCompat.addWebMessageListener(webView, Scripts.NOTIFY_CHANNEL, origins, ::onPageMessage)
+            if (WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
+                startScript = WebViewCompat.addDocumentStartJavaScript(webView, Scripts.NOTIFY_SHIM, origins)
+            }
+        } catch (e: IllegalArgumentException) {
+            // An address WebView will not accept as an origin rule: no page notifications for it.
+        }
+    }
+
+    private fun onPageMessage(
+        view: WebView,
+        message: WebMessageCompat,
+        sourceOrigin: Uri,
+        isMainFrame: Boolean,
+        reply: JavaScriptReplyProxy,
+    ) {
+        val base = currentServerBase ?: return
+        if (!isMainFrame || !UrlTools.isSameServer(base, sourceOrigin.toString())) return
+        val msg = try {
+            JSONObject(message.data ?: return)
+        } catch (e: JSONException) {
+            return
+        }
+        val tag = msg.optString("tag", "")
+        when (msg.optString("op", "")) {
+            "notify" -> onPageNotification(msg.optString("title", ""), msg.optString("body", ""), tag)
+            "close" -> Notifier.cancelLive(this, tag)
+            "request" -> requestNotifyPermission(reply)
+        }
+    }
+
+    private fun onPageNotification(title: String, body: String, tag: String) {
+        if (!prefs.notifyEnabled || title.isBlank()) return
+        // While you look at the dashboard it shows its own banner.
+        if (isResumedNow()) return
+        // Feed notes come from the background check when that is on, so they are not shown twice.
+        if (!LiveTags.isSessionEvent(tag) && AlertScheduler.mode(prefs) != AlertScheduler.MODE_OFF) return
+        val profiles = prefs.profiles
+        Notifier.postLive(this, profiles.firstOrNull { it.id == loadedProfileId }, profiles.size > 1, title, body, tag)
+    }
+
+    /** What the page sees as Notification.permission. */
+    private fun notifyPermissionState(): String = when {
+        !prefs.notifyEnabled -> "denied"
+        Notifier.canPost(this) -> "granted"
+        Build.VERSION.SDK_INT >= 33 && !prefs.askedNotifyPermission -> "default"
+        else -> "denied"
+    }
+
+    private fun permissionMessage(state: String) =
+        JSONObject().put("op", "permission").put("value", state).toString()
+
+    private fun requestNotifyPermission(reply: JavaScriptReplyProxy?) {
+        val state = notifyPermissionState()
+        if (state != "default" || Build.VERSION.SDK_INT < 33) {
+            reply?.postMessage(permissionMessage(state))
+            return
+        }
+        reply?.let { permissionReplies.add(it) }
+        if (askingNotifyPermission) return
+        askingNotifyPermission = true
+        prefs.askedNotifyPermission = true
+        notifyPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
+
+    /** Asks once, after the first dashboard page loads, so the phone can show alerts. */
+    private fun maybeAskNotifyPermission() {
+        if (Build.VERSION.SDK_INT < 33 || prefs.askedNotifyPermission || !prefs.notifyEnabled) return
+        if (lockView.isVisible || !isResumedNow() || Notifier.canPost(this)) return
+        requestNotifyPermission(null)
+    }
+
+    private fun isResumedNow() = lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
 
     private fun currentPageIsTrusted(): Boolean {
         val base = currentServerBase ?: return false
@@ -572,6 +715,8 @@ class MainActivity : AppCompatActivity() {
         currentServerBase = profile.baseUrl
         supportActionBar?.title = profile.name
         hideMessage()
+        if (isResumedNow()) app.visibleProfileId = profile.id
+        refreshPageHooks()
         webView.loadUrl(target.openUrl ?: UrlTools.buildUrl(profile.baseUrl, prefs.startPath()))
     }
 
@@ -608,6 +753,7 @@ class MainActivity : AppCompatActivity() {
     private fun onUnlocked() {
         app.unlocked()
         lockView.isVisible = false
+        updates.autoCheck()
     }
 
     private fun onUnlockFailed() {
@@ -730,7 +876,10 @@ class MainActivity : AppCompatActivity() {
             swipe.isRefreshing = false
             progress.hide()
             if (!mainFrameError) hideMessage()
-            if (currentPageIsTrusted()) injectPageScripts()
+            if (currentPageIsTrusted()) {
+                injectPageScripts()
+                if (!mainFrameError) maybeAskNotifyPermission()
+            }
             syncNavSelection(url)
             CookieManager.getInstance().flush()
         }
@@ -854,10 +1003,16 @@ class MainActivity : AppCompatActivity() {
 
         @JavascriptInterface
         fun appVersion(): String = BuildConfig.VERSION_NAME
+
+        /** Read by the Notification stand-in so `Notification.permission` is always current. */
+        @JavascriptInterface
+        fun notificationPermission(): String = notifyPermissionState()
     }
 
     companion object {
         const val EXTRA_PATH = "io.github.rayvader.kirocrew.PATH"
+        const val EXTRA_PROFILE = "io.github.rayvader.kirocrew.PROFILE"
+        const val EXTRA_SHOW_UPDATE = "io.github.rayvader.kirocrew.SHOW_UPDATE"
         private const val STATE_PROFILE = "loaded_profile"
         private const val NAV_ID_BASE = 100
     }

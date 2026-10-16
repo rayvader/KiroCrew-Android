@@ -60,6 +60,44 @@ class Prefs(context: Context) {
     val startPage: String get() = sp.getString("start_page", "chat") ?: "chat"
     val customStartPath: String get() = sp.getString("custom_start_path", "/") ?: "/"
 
+    // Notifications
+    val notifyEnabled: Boolean get() = sp.getBoolean("notify_enabled", true)
+    /** "off", a number of minutes ("15", "30", "60"), or "instant". */
+    val alertMode: String get() = sp.getString("alert_mode", "15") ?: "15"
+
+    var askedNotifyPermission: Boolean
+        get() = sp.getBoolean(K_ASKED_NOTIFY, false)
+        set(value) = sp.edit { putBoolean(K_ASKED_NOTIFY, value) }
+
+    /** Newest notification time seen for a server; null before the first check. */
+    fun alertMarker(profileId: String): String? = sp.getString(K_MARKER + profileId, null)
+    fun setAlertMarker(profileId: String, marker: String) = sp.edit { putString(K_MARKER + profileId, marker) }
+
+    fun signInNeeded(profileId: String): Boolean = sp.getBoolean(K_SIGN_IN + profileId, false)
+    fun setSignInNeeded(profileId: String, needed: Boolean) = sp.edit { putBoolean(K_SIGN_IN + profileId, needed) }
+
+    // Updates
+    val updateCheck: Boolean get() = sp.getBoolean("update_check", true)
+
+    var lastUpdateCheckAt: Long
+        get() = sp.getLong(K_LAST_UPDATE_CHECK, 0L)
+        set(value) = sp.edit { putLong(K_LAST_UPDATE_CHECK, value) }
+
+    /** The release we already sent a notification about, so it is sent once. */
+    var notifiedUpdateVersion: String?
+        get() = sp.getString(K_NOTIFIED_UPDATE, null)
+        set(value) = sp.edit { putString(K_NOTIFIED_UPDATE, value) }
+
+    fun snoozeUpdate(version: String) = sp.edit {
+        putString(K_SNOOZED_UPDATE, version)
+        putLong(K_SNOOZED_AT, System.currentTimeMillis())
+    }
+
+    /** "Later" hides the prompt for that version for a day. */
+    fun isUpdateSnoozed(version: String): Boolean =
+        sp.getString(K_SNOOZED_UPDATE, null) == version &&
+            System.currentTimeMillis() - sp.getLong(K_SNOOZED_AT, 0L) < SNOOZE_MS
+
     val bottomShortcuts: List<Shortcut>
         get() {
             val keys = sp.getStringSet("bottom_shortcuts", null) ?: return Shortcut.DEFAULT_BAR
@@ -79,5 +117,13 @@ class Prefs(context: Context) {
         private const val K_PENDING_OPEN = "pending_open_url"
         private const val K_PENDING_CLEAR = "pending_clear_cache"
         private const val K_PENDING_RELOAD = "pending_reload"
+        private const val K_ASKED_NOTIFY = "asked_notify_permission"
+        private const val K_MARKER = "alert_marker_"
+        private const val K_SIGN_IN = "alert_sign_in_"
+        private const val K_LAST_UPDATE_CHECK = "last_update_check"
+        private const val K_NOTIFIED_UPDATE = "notified_update"
+        private const val K_SNOOZED_UPDATE = "snoozed_update"
+        private const val K_SNOOZED_AT = "snoozed_update_at"
+        private const val SNOOZE_MS = 24L * 60 * 60 * 1000
     }
 }

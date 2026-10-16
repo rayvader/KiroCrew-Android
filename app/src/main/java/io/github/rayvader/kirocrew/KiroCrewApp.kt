@@ -7,8 +7,17 @@ import androidx.preference.PreferenceManager
 
 class KiroCrewApp : Application(), Application.ActivityLifecycleCallbacks {
 
-    private var startedActivities = 0
+    @Volatile private var startedActivities = 0
     private var backgroundedAt = 0L
+
+    /** Any app screen is on screen. */
+    val inForeground: Boolean get() = startedActivities > 0
+
+    /**
+     * The server whose dashboard is on screen right now, or null. Its alerts
+     * are not posted: the dashboard shows them in its own banner.
+     */
+    @Volatile var visibleProfileId: String? = null
 
     /** App lock state: locked on a cold start, and again after the timeout in the background. */
     var locked = true
@@ -22,6 +31,7 @@ class KiroCrewApp : Application(), Application.ActivityLifecycleCallbacks {
         super.onCreate()
         PreferenceManager.setDefaultValues(this, R.xml.preferences, false)
         Theming.applyNightMode(Prefs(this).theme)
+        Notifier.createChannels(this)
         registerActivityLifecycleCallbacks(this)
     }
 

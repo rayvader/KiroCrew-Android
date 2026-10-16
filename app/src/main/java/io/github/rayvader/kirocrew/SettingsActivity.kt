@@ -1,15 +1,21 @@
 package io.github.rayvader.kirocrew
 
+import android.Manifest
 import android.content.Intent
 import android.content.SharedPreferences
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.text.InputType
 import android.webkit.CookieManager
 import android.webkit.WebStorage
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.preference.EditTextPreference
+import androidx.preference.ListPreference
 import androidx.preference.MultiSelectListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
@@ -19,9 +25,13 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import io.github.rayvader.kirocrew.core.Shortcut
 
 class SettingsActivity : AppCompatActivity() {
+    lateinit var updates: UpdateFlow
+        private set
+
     override fun onCreate(savedInstanceState: Bundle?) {
         Theming.applyAccent(this, Prefs(this))
         super.onCreate(savedInstanceState)
+        updates = UpdateFlow(this)
         setContentView(R.layout.activity_settings)
         setSupportActionBar(findViewById<MaterialToolbar>(R.id.toolbar))
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
@@ -32,6 +42,11 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        updates.onResume()
+    }
+
     override fun onSupportNavigateUp(): Boolean {
         finish()
         return true
@@ -40,9 +55,40 @@ class SettingsActivity : AppCompatActivity() {
 
 class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedPreferenceChangeListener {
 
+    private val notifyPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        val ctx = context ?: return@registerForActivityResult
+        if (!granted) Toast.makeText(ctx, R.string.notify_denied_toast, Toast.LENGTH_LONG).show()
+        AlertScheduler.apply(ctx)
+        updateNotifySummary()
+    }
+
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         setPreferencesFromResource(R.xml.preferences, rootKey)
         val ctx = requireContext()
+
+        findPreference<SwitchPreferenceCompat>("notify_enabled")?.setOnPreferenceChangeListener { _, newValue ->
+            if (newValue == true) askNotifyPermissionIfNeeded()
+            true
+        }
+
+        findPreference<ListPreference>("alert_mode")?.setOnPreferenceChangeListener { _, newValue ->
+            if (newValue != AlertScheduler.MODE_OFF) askNotifyPermissionIfNeeded()
+            true
+        }
+
+        findPreference<Preference>("notify_system")?.setOnPreferenceClickListener {
+            try {
+                startActivity(Notifier.systemSettingsIntent(ctx))
+            } catch (e: Exception) {
+                Toast.makeText(ctx, R.string.no_app, Toast.LENGTH_SHORT).show()
+            }
+            true
+        }
+
+        findPreference<Preference>("check_updates")?.setOnPreferenceClickListener {
+            (activity as? SettingsActivity)?.updates?.checkNow()
+            true
+        }
 
         findPreference<Preference>("servers")?.setOnPreferenceClickListener {
             startActivity(Intent(ctx, ProfilesActivity::class.java))
@@ -134,6 +180,28 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
         findPreference<Preference>("servers")?.summary =
             Prefs(requireContext()).activeProfile?.let { getString(R.string.servers_active, it.name) }
                 ?: getString(R.string.servers_summary)
+        updateNotifySummary()
+    }
+
+    private fun askNotifyPermissionIfNeeded() {
+        val ctx = requireContext()
+        if (Notifier.canPost(ctx)) return
+        if (Build.VERSION.SDK_INT >= 33 &&
+            ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            Prefs(ctx).askedNotifyPermission = true
+            notifyPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            // Switched off in Android settings: only the user can turn it back on there.
+            Toast.makeText(ctx, R.string.notify_denied_toast, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun updateNotifySummary() {
+        val ctx = context ?: return
+        findPreference<SwitchPreferenceCompat>("notify_enabled")?.summary = getString(
+            if (Prefs(ctx).notifyEnabled && !Notifier.canPost(ctx)) R.string.notify_blocked else R.string.notify_enabled_summary
+        )
     }
 
     override fun onPause() {
@@ -145,6 +213,11 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
         when (key) {
             "theme" -> Theming.applyNightMode(Prefs(requireContext()).theme)
             "accent" -> requireActivity().recreate()
+            "notify_enabled", "alert_mode" -> {
+                AlertScheduler.apply(requireContext())
+                updateNotifySummary()
+            }
+            "update_check" -> UpdateScheduler.apply(requireContext())
         }
     }
 }

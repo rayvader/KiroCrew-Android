@@ -81,15 +81,19 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+      # Only builds from main are full releases. Branch builds are pre-releases,
+      # so the in-app update check (which reads "latest") never offers them.
       - name: Publish release
         if: github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
+          PRERELEASE: ${{ github.ref_name != 'main' && '--prerelease' || '' }}
         run: |
           gh release create "v${{ steps.apk.outputs.version }}" "${{ steps.apk.outputs.file }}" \
             --target "${{ github.sha }}" \
             --title "Kiro Crew Android ${{ steps.apk.outputs.version }}" \
-            --notes "Built from ${{ github.ref_name }} (${{ github.sha }}). Download the APK on your phone and open it to install."
+            --notes "Built from ${{ github.ref_name }} (${{ github.sha }}). Download the APK on your phone and open it to install." \
+            $PRERELEASE
 
   smoke:
     # Installs the APK on an Android 14 emulator, adds a server through the UI,

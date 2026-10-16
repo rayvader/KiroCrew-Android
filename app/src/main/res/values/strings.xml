@@ -80,6 +80,56 @@
     <string name="fast_nav">Fast page switching</string>
     <string name="fast_nav_summary">Switch pages inside the app without a full reload</string>
 
+    <string name="cat_notifications">Notifications</string>
+    <string name="notify_enabled">Show notifications</string>
+    <string name="notify_enabled_summary">Dashboard alerts and finished chats, on your phone</string>
+    <string name="notify_blocked">Android is blocking them. Tap Sound and vibration to allow.</string>
+    <string name="notify_denied_toast">Notifications are off. Turn them on in Sound and vibration.</string>
+    <string name="alert_mode">Background alerts</string>
+    <string name="notify_system">Sound and vibration</string>
+    <string name="notify_system_summary">Choose sounds, vibration and pop-ups for each kind of alert</string>
+
+    <string name="channel_alerts">Dashboard alerts</string>
+    <string name="channel_alerts_desc">Notes from the dashboard bell, like approvals and finished jobs</string>
+    <string name="channel_chat">Chat updates</string>
+    <string name="channel_chat_desc">A chat finished or is waiting for you</string>
+    <string name="channel_app">App updates and sign-in</string>
+    <string name="channel_app_desc">New app versions, and when a server needs you to sign in again</string>
+    <string name="channel_connection">Instant alerts connection</string>
+    <string name="channel_connection_desc">The small notice shown while instant alerts stay connected</string>
+    <plurals name="more_alerts">
+        <item quantity="one">%1$d more alert</item>
+        <item quantity="other">%1$d more alerts</item>
+    </plurals>
+    <string name="sign_in_needed_title">Sign in again for alerts</string>
+    <string name="sign_in_needed_body">Open Kiro Crew and sign in to %1$s so alerts keep coming.</string>
+    <string name="instant_alerts_on">Instant alerts are on</string>
+    <string name="instant_connecting">Connecting…</string>
+    <string name="instant_reconnecting">Reconnecting…</string>
+    <string name="instant_signed_out">Sign in again in the app</string>
+    <string name="instant_connected_one">Connected to %1$s</string>
+    <string name="instant_connected_many">Connected to %1$d servers</string>
+
+    <string name="update_check">Check for updates</string>
+    <string name="update_check_summary">Looks for a new version on GitHub when the app opens and once a day</string>
+    <string name="check_updates">Check now</string>
+    <string name="check_updates_summary">Download and install the newest version</string>
+    <string name="update_checking">Checking for updates…</string>
+    <string name="update_none">You have the newest version (%1$s)</string>
+    <string name="update_check_failed">Could not check for updates: %1$s</string>
+    <string name="update_title">Version %1$s is ready</string>
+    <string name="update_body">You have %1$s. Install %2$s now? Your settings and login stay.</string>
+    <string name="update_now">Update</string>
+    <string name="later">Later</string>
+    <string name="release_notes">What\'s new</string>
+    <string name="update_allow_installs">Allow Kiro Crew to install apps, then come back</string>
+    <string name="update_downloading">Downloading %1$s</string>
+    <string name="update_failed">Update failed: %1$s</string>
+    <string name="update_ready_title">Kiro Crew %1$s is ready</string>
+    <string name="update_ready_body">Tap to update</string>
+    <string name="update_install_ready">Update downloaded</string>
+    <string name="update_install_tap">Tap to install</string>
+
     <string name="cat_look">Look</string>
     <string name="theme">App theme</string>
     <string name="accent">Accent color</string>
