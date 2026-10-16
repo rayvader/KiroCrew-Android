@@ -139,12 +139,12 @@ class AlertService : Service() {
                     is AlertsClient.Feed.Ok -> signedOut = false
                     AlertsClient.Feed.SignedOut -> {
                         signedOut = true
-                        setConnected(false)
+                        markConnected(false)
                         pause(SIGNED_OUT_WAIT_MS)
                         continue
                     }
                     is AlertsClient.Feed.Failed -> {
-                        setConnected(false)
+                        markConnected(false)
                         pause(backoff)
                         backoff = (backoff * 2).coerceAtMost(MAX_BACKOFF_MS)
                         continue
@@ -152,7 +152,7 @@ class AlertService : Service() {
                 }
                 val openedAt = SystemClock.elapsedRealtime()
                 try {
-                    client.stream(profile, ::keepGoing, onConnected = { setConnected(true) }) { note ->
+                    client.stream(profile, ::keepGoing, onConnected = { markConnected(true) }) { note ->
                         AlertSync.onLiveNote(this@AlertService, profile, showServer, note)
                     }
                 } catch (e: IOException) {
@@ -160,14 +160,14 @@ class AlertService : Service() {
                 } catch (e: RuntimeException) {
                     // Same.
                 }
-                setConnected(false)
+                markConnected(false)
                 if (SystemClock.elapsedRealtime() - openedAt > STABLE_MS) backoff = MIN_BACKOFF_MS
                 pause(backoff)
                 backoff = (backoff * 2).coerceAtMost(MAX_BACKOFF_MS)
             }
         }
 
-        private fun setConnected(value: Boolean) {
+        private fun markConnected(value: Boolean) {
             if (connected == value) return
             connected = value
             if (value) signedOut = false
