@@ -14,10 +14,22 @@
   <h1>Kiro Crew smoke page</h1>
   <p id="bridge">Bridge missing</p>
   <p id="ua"></p>
+  <p id="notify">Notify missing</p>
   <script>
     var b = document.getElementById('bridge');
     if (window.KiroCrewAndroid) b.textContent = 'Bridge OK ' + window.KiroCrewAndroid.appVersion();
     document.getElementById('ua').textContent = /KiroCrewAndroid\//.test(navigator.userAgent) ? 'User agent OK' : 'User agent missing';
+    // The app's Notification stand-in must be there from the start, like in a browser.
+    if (typeof Notification === 'function' && window.KiroCrewNotify) {
+      document.getElementById('notify').textContent = 'Notify OK ' + Notification.permission;
+    }
+    // Like the dashboard: toast a finished chat only when the app is in the background.
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden || typeof Notification !== 'function') return;
+      setTimeout(function () {
+        new Notification('Smoke chat finished', { body: 'Hello from the smoke page', tag: 'kirocrew-chat-done:smoke' });
+      }, 1000);
+    });
   </script>
 </body>
 </html>

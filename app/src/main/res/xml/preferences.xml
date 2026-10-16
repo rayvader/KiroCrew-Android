@@ -34,6 +34,32 @@
 
     <PreferenceCategory
         app:iconSpaceReserved="false"
+        app:title="@string/cat_notifications">
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:iconSpaceReserved="false"
+            app:key="notify_enabled"
+            app:summary="@string/notify_enabled_summary"
+            app:title="@string/notify_enabled" />
+        <ListPreference
+            app:defaultValue="15"
+            app:dependency="notify_enabled"
+            app:entries="@array/alert_mode_entries"
+            app:entryValues="@array/alert_mode_values"
+            app:iconSpaceReserved="false"
+            app:key="alert_mode"
+            app:title="@string/alert_mode"
+            app:useSimpleSummaryProvider="true" />
+        <Preference
+            app:dependency="notify_enabled"
+            app:iconSpaceReserved="false"
+            app:key="notify_system"
+            app:summary="@string/notify_system_summary"
+            app:title="@string/notify_system" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:iconSpaceReserved="false"
         app:title="@string/cat_look">
         <ListPreference
             app:defaultValue="system"
@@ -184,6 +210,17 @@
             app:key="about"
             app:selectable="false"
             app:title="@string/about" />
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:iconSpaceReserved="false"
+            app:key="update_check"
+            app:summary="@string/update_check_summary"
+            app:title="@string/update_check" />
+        <Preference
+            app:iconSpaceReserved="false"
+            app:key="check_updates"
+            app:summary="@string/check_updates_summary"
+            app:title="@string/check_updates" />
         <Preference
             app:iconSpaceReserved="false"
             app:key="source"
