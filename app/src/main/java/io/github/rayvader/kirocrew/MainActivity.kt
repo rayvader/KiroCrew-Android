@@ -174,7 +174,14 @@ class MainActivity : AppCompatActivity() {
         val restored = savedInstanceState != null && webView.restoreState(savedInstanceState) != null
         if (restored) {
             loadedProfileId = savedInstanceState?.getString(STATE_PROFILE)
-            currentServerBase = prefs.profiles.firstOrNull { it.id == loadedProfileId }?.baseUrl
+            val profile = prefs.profiles.firstOrNull { it.id == loadedProfileId }
+            currentServerBase = profile?.baseUrl
+            // The rebuilt screen (after a theme or accent change) starts with the
+            // default title; show the server's name and HTTP warning again.
+            if (profile != null) {
+                supportActionBar?.title = profile.name
+                insecureHint.isVisible = UrlTools.isUnencryptedPublic(profile.baseUrl)
+            }
         } else {
             loadInitial(intent)
             if (intent?.getBooleanExtra(EXTRA_SHOW_UPDATE, false) == true) updates.checkNow()
