@@ -83,6 +83,7 @@ tap_now() {
       tap_xy $xy
       return 0
     fi
+    dismiss_anr
     sleep 1
   done
   fail "cannot find to tap: $1"
@@ -246,6 +247,12 @@ f_add_server() {
   launch
   wait_text "Connect to Kiro Crew"
   check "first start shows the welcome screen"
+  tap_now "How to connect"
+  wait_text "Connect your phone"
+  wait_text "my-host.tailnet.ts.net:5476"
+  check "the welcome screen opens the How to connect guide"
+  tap_now "Got it"
+  wait_no_text "Address examples" 10
   tap_now "Add server"
   tap_now "$PKG:id/url"
   # No scheme typed: host:port must become http://.
@@ -693,6 +700,8 @@ sleep 3
 adb wait-for-device
 [[ $(adb shell id -u | tr -d '\r') == 0 ]] || { echo "adb root is not available on this image"; exit 1; }
 adb shell settings put global auto_time 0
+# Hide system "isn't responding" pop-ups; a slow CI emulator shows them for the launcher.
+adb shell settings put global hide_error_dialogs 1
 adb shell svc power stayon true
 # Same first-boot Play services restart as in smoke.sh.
 sleep 60

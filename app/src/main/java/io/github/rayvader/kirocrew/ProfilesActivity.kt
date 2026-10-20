@@ -74,6 +74,10 @@ class ProfilesActivity : AppCompatActivity() {
             launchQr()
             true
         }
+        R.id.action_connect_help -> {
+            ConnectHelp.show(this)
+            true
+        }
         else -> super.onOptionsItemSelected(item)
     }
 
@@ -130,6 +134,7 @@ class ProfilesActivity : AppCompatActivity() {
         nameField.setText(existing?.name.orEmpty())
         urlField.setText(existing?.baseUrl.orEmpty())
         view.findViewById<MaterialButton>(R.id.scan).setOnClickListener { launchQr() }
+        view.findViewById<MaterialButton>(R.id.help).setOnClickListener { ConnectHelp.show(this) }
         editorNameField = nameField
         editorUrlField = urlField
 
