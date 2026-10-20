@@ -314,6 +314,7 @@ f_rotate() {
 f_page_notification() {
   launch
   page_path /chat
+  curl -s "$GW/test/arm-toast" >/dev/null
   home
   wait_notif "E2E chat finished" 20
   grep -qF "live:kirocrew-chat-done:e2e" "$OUT/notif.txt" || fail "chat toast was not posted as a live notification"
@@ -380,8 +381,10 @@ f_login_renewal() {
   wait_notif "Sign in again for alerts" 30
   check "when renewal fails, 'Sign in again for alerts' is shown"
   curl -s "$GW/test/refresh-policy?allow=1" >/dev/null
+  # Signing in again = loading a dashboard page, which hands out a new login cookie.
   launch
-  page_path /chat 30
+  tap_now "Reload"
+  wait_text "Kiro Crew test gateway Primary" 30
   run_jobs
   wait_no_notif "Sign in again for alerts" 30
   check "the sign-in notice goes away after signing in again"

@@ -76,11 +76,15 @@ PAGE = """<!doctype html>
     document.body.appendChild(a); a.click(); a.remove();
   }
   // Like the dashboard: a finished chat raises a browser toast while the app is in the background.
+  // Only when a test armed one (/test/arm-toast), so a stray pop-up never covers other screens.
   document.addEventListener('visibilitychange', function () {
     if (!document.hidden || typeof Notification !== 'function') return;
-    setTimeout(function () {
-      new Notification('E2E chat finished', { body: 'The test chat is done', tag: 'kirocrew-chat-done:e2e' });
-    }, 1000);
+    fetch('/test/take-toast').then(function (r) { return r.text(); }).then(function (t) {
+      if (t !== '1') return;
+      setTimeout(function () {
+        new Notification('E2E chat finished', { body: 'The test chat is done', tag: 'kirocrew-chat-done:e2e' });
+      }, 1000);
+    });
   });
 </script>
 </body>
@@ -94,6 +98,7 @@ class State:
         self.lock = threading.Lock()
         self.sessions = set()
         self.refresh_allowed = True
+        self.toast_armed = False
         self.notes = []
         self.listeners = []
         self.log = []
@@ -196,6 +201,14 @@ def make_handler(state):
                 }
                 state.push(note)
                 return self.send(200, json.dumps(note), "application/json")
+            if p == "/test/arm-toast":
+                with state.lock:
+                    state.toast_armed = True
+                return self.send(200, "armed")
+            if p == "/test/take-toast":
+                with state.lock:
+                    armed, state.toast_armed = state.toast_armed, False
+                return self.send(200, "1" if armed else "0")
             if p == "/test/refresh-policy":
                 with state.lock:
                     state.refresh_allowed = q.get("allow", "1") == "1"
