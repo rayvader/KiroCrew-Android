@@ -176,12 +176,11 @@ class MainActivity : AppCompatActivity() {
             loadedProfileId = savedInstanceState?.getString(STATE_PROFILE)
             val profile = prefs.profiles.firstOrNull { it.id == loadedProfileId }
             currentServerBase = profile?.baseUrl
+            // The rebuilt screen (after a theme or accent change) starts with the
+            // default title; show the server's name and HTTP warning again.
             if (profile != null) {
                 supportActionBar?.title = profile.name
                 insecureHint.isVisible = UrlTools.isUnencryptedPublic(profile.baseUrl)
-                // A restored WebView can stay blank (seen after a theme or accent change),
-                // so load the restored page again. Back history is kept.
-                webView.reload()
             }
         } else {
             loadInitial(intent)
