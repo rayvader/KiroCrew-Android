@@ -71,6 +71,25 @@ wait_no_text() {
   fail "still on screen after ${2:-20}s: $1"
 }
 
+# Width in dp of the node with this resource id.
+width_dp() {
+  local px density
+  dump || return 1
+  px=$(python3 - "$OUT/ui.xml" "$1" <<'PY'
+import re, sys, xml.etree.ElementTree as ET
+for n in ET.parse(sys.argv[1]).iter("node"):
+    if n.get("resource-id") == sys.argv[2]:
+        m = re.match(r"\[(\d+),\d+\]\[(\d+),\d+\]", n.get("bounds", ""))
+        if m:
+            print(int(m.group(2)) - int(m.group(1)))
+            sys.exit(0)
+sys.exit(1)
+PY
+) || return 1
+  density=$(adb shell wm density | grep -oE '[0-9]+' | tail -1)
+  echo $((px * 160 / density))
+}
+
 tap_xy() { adb shell input tap "$1" "$2"; sleep "${3:-1.5}"; }
 scroll_down() { adb shell input swipe $((W / 2)) $((H * 3 / 4)) $((W / 2)) $((H / 3)) 400; sleep 1; }
 scroll_up() { adb shell input swipe $((W / 2)) $((H / 3)) $((W / 2)) $((H * 3 / 4)) 400; sleep 1; }
@@ -501,9 +520,20 @@ f_top_bar() {
   set_switch "Show top bar" false
   back
   dump
-  python3 "$HERE/ui.py" find "$OUT/ui.xml" "$PKG:id/menu_fab" >/dev/null || fail "no floating menu button"
+  python3 "$HERE/ui.py" find "$OUT/ui.xml" "$PKG:id/menu_fab" >/dev/null || fail "no menu tab"
   ! python3 "$HERE/ui.py" find "$OUT/ui.xml" "More options" >/dev/null || fail "top bar still shown"
-  check "top bar off shows a floating menu button instead"
+  local w
+  w=$(width_dp "$PKG:id/menu_fab") || fail "cannot measure the menu tab"
+  ((w <= 40)) || fail "menu tab is ${w} dp wide at rest, wanted a slim tab"
+  check "top bar off shows a slim tab on the right edge (${w} dp)"
+  tap_now "$PKG:id/menu_fab"
+  wait_any "Reload" "Servers"
+  check "tapping the tab opens the menu"
+  back
+  sleep 1
+  w=$(width_dp "$PKG:id/menu_fab") || fail "menu tab gone after closing the menu"
+  ((w <= 40)) || fail "menu tab stayed open (${w} dp) after closing the menu"
+  check "closing the menu slides the tab back"
   tap_now "$PKG:id/menu_fab"
   tap_now "Settings" menu
   set_switch "Show top bar" true

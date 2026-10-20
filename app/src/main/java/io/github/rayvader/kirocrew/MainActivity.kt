@@ -1,6 +1,7 @@
 package io.github.rayvader.kirocrew
 
 import android.Manifest
+import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
 import android.content.ClipData
@@ -13,6 +14,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
+import android.view.Gravity
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
@@ -57,7 +59,6 @@ import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.color.MaterialColors
-import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.journeyapps.barcodescanner.ScanContract
 import io.github.rayvader.kirocrew.core.LiveTags
@@ -78,7 +79,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var progress: LinearProgressIndicator
     private lateinit var swipe: SwipeRefreshLayout
     private lateinit var bottomNav: BottomNavigationView
-    private lateinit var menuFab: FloatingActionButton
+    private lateinit var menuFab: View
+    private lateinit var menuTab: View
+    private lateinit var menuTabIcon: View
     private lateinit var messageView: View
     private lateinit var messageTitle: TextView
     private lateinit var messageBody: TextView
@@ -161,7 +164,7 @@ class MainActivity : AppCompatActivity() {
         refreshPageHooks()
         setupBackHandling()
         swipe.setOnRefreshListener { webView.reload() }
-        menuFab.setOnClickListener { showAppMenu(it) }
+        menuFab.setOnClickListener { openEdgeMenu() }
         insecureHint.setOnClickListener { it.isVisible = false }
         messageHelp.setOnClickListener { ConnectHelp.show(this) }
         findViewById<MaterialButton>(R.id.unlock_button).setOnClickListener { promptUnlock() }
@@ -197,6 +200,8 @@ class MainActivity : AppCompatActivity() {
         webView = findViewById(R.id.webview)
         bottomNav = findViewById(R.id.bottom_nav)
         menuFab = findViewById(R.id.menu_fab)
+        menuTab = findViewById(R.id.menu_tab)
+        menuTabIcon = findViewById(R.id.menu_tab_icon)
         messageView = findViewById(R.id.message)
         messageTitle = findViewById(R.id.message_title)
         messageBody = findViewById(R.id.message_body)
@@ -610,12 +615,33 @@ class MainActivity : AppCompatActivity() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean =
         onMenuAction(item.itemId) || super.onOptionsItemSelected(item)
 
-    private fun showAppMenu(anchor: View) {
-        PopupMenu(this, anchor).apply {
+    private fun showAppMenu(anchor: View, onDismiss: (() -> Unit)? = null) {
+        PopupMenu(this, anchor, Gravity.END).apply {
             menuInflater.inflate(R.menu.main_menu, menu)
             setOnMenuItemClickListener { onMenuAction(it.itemId) }
+            onDismiss?.let { done -> setOnDismissListener { done() } }
             show()
         }
+    }
+
+    /** The edge tab slides out while its menu is open, and back when the menu closes. */
+    private fun openEdgeMenu() {
+        setMenuTabOpen(true)
+        showAppMenu(menuTab) { setMenuTabOpen(false) }
+    }
+
+    private fun setMenuTabOpen(open: Boolean) {
+        val density = resources.displayMetrics.density
+        val target = ((if (open) TAB_OPEN_DP else TAB_REST_DP) * density).toInt()
+        ValueAnimator.ofInt(menuTab.layoutParams.width, target).apply {
+            duration = TAB_ANIM_MS
+            addUpdateListener { a ->
+                menuTab.layoutParams = menuTab.layoutParams.apply { width = a.animatedValue as Int }
+            }
+            start()
+        }
+        menuTab.animate().alpha(if (open) 1f else TAB_REST_ALPHA).setDuration(TAB_ANIM_MS).start()
+        menuTabIcon.animate().alpha(if (open) 1f else 0f).setDuration(TAB_ANIM_MS).start()
     }
 
     private fun onMenuAction(id: Int): Boolean {
@@ -1025,5 +1051,9 @@ class MainActivity : AppCompatActivity() {
         const val EXTRA_SHOW_UPDATE = "io.github.rayvader.kirocrew.SHOW_UPDATE"
         private const val STATE_PROFILE = "loaded_profile"
         private const val NAV_ID_BASE = 100
+        private const val TAB_REST_DP = 14
+        private const val TAB_OPEN_DP = 52
+        private const val TAB_REST_ALPHA = 0.85f
+        private const val TAB_ANIM_MS = 180L
     }
 }

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The edge tab shown when the top bar is off: rounded on the left, flush with the right edge. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="?attr/colorPrimary" />
+    <corners
+        android:bottomLeftRadius="12dp"
+        android:topLeftRadius="12dp" />
+</shape>
