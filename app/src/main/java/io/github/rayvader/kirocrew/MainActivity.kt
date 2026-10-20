@@ -174,7 +174,15 @@ class MainActivity : AppCompatActivity() {
         val restored = savedInstanceState != null && webView.restoreState(savedInstanceState) != null
         if (restored) {
             loadedProfileId = savedInstanceState?.getString(STATE_PROFILE)
-            currentServerBase = prefs.profiles.firstOrNull { it.id == loadedProfileId }?.baseUrl
+            val profile = prefs.profiles.firstOrNull { it.id == loadedProfileId }
+            currentServerBase = profile?.baseUrl
+            if (profile != null) {
+                supportActionBar?.title = profile.name
+                insecureHint.isVisible = UrlTools.isUnencryptedPublic(profile.baseUrl)
+                // A restored WebView can stay blank (seen after a theme or accent change),
+                // so load the restored page again. Back history is kept.
+                webView.reload()
+            }
         } else {
             loadInitial(intent)
             if (intent?.getBooleanExtra(EXTRA_SHOW_UPDATE, false) == true) updates.checkNow()

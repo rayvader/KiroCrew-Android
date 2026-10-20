@@ -614,6 +614,9 @@ f_theme() {
   wait_text "Kiro Crew test gateway Primary"
   app_running || fail "app crashed on theme change"
   check "theme and accent change without a crash"
+  dump
+  python3 "$HERE/ui.py" find "$OUT/ui.xml" "10.0.2.2" >/dev/null || fail "top bar lost the server name"
+  check "the page and the server name come back after the change"
   video_only "the new colors are only visible in the video"
 }
 
