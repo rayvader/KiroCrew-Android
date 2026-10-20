@@ -8,6 +8,7 @@ import android.net.Network
 import android.os.Build
 import android.os.IBinder
 import android.os.SystemClock
+import androidx.core.app.NotificationManagerCompat
 import io.github.rayvader.kirocrew.core.Profile
 import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
@@ -61,7 +62,8 @@ class AlertService : Service() {
     }
 
     override fun onDestroy() {
-        running = false
+        // Under the same lock as refreshStatus, so no stream thread can post the notice after this.
+        synchronized(this) { running = false }
         networkCallback?.let {
             try {
                 getSystemService(ConnectivityManager::class.java)?.unregisterNetworkCallback(it)
@@ -71,6 +73,9 @@ class AlertService : Service() {
         }
         streams.values.forEach { it.stop() }
         streams.clear()
+        // A status update can re-post the notice as a plain notification; remove it too.
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        NotificationManagerCompat.from(this).cancel(Notifier.ID_SERVICE)
         super.onDestroy()
     }
 
@@ -90,6 +95,9 @@ class AlertService : Service() {
 
     @Synchronized
     private fun refreshStatus() {
+        // Stream threads report their last state while the service stops. Posting
+        // then would leave an "Instant alerts are on" notice with no service behind it.
+        if (!running) return
         val all = streams.values.toList()
         val text = when {
             all.isEmpty() -> getString(R.string.instant_connecting)
