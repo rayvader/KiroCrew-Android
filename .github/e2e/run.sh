@@ -44,6 +44,7 @@ wait_text() {
   local end=$((SECONDS + ${2:-20}))
   while ((SECONDS < end)); do
     has_text "$1" && return 0
+    dismiss_anr
     sleep 1
   done
   fail "not on screen after ${2:-20}s: $1"
@@ -127,8 +128,19 @@ type_text() { adb shell "input text '${1// /%s}'"; sleep 1; }
 ok_button() { tap_now "android:id/button1"; }
 back() { adb shell input keyevent KEYCODE_BACK; sleep 1.5; }
 home() { adb shell input keyevent KEYCODE_HOME; sleep 2; }
+# A slow CI emulator sometimes shows "<app> isn't responding" for a system app,
+# which covers every screen. Answer "Wait" so the run can go on.
+dismiss_anr() {
+  local xy
+  if has_text "isn't responding" && xy=$(python3 "$HERE/ui.py" find "$OUT/ui.xml" "Wait"); then
+    echo "Closed a system 'isn't responding' dialog"
+    tap_xy $xy
+  fi
+}
+
 launch() {
   adb shell cmd statusbar collapse >/dev/null 2>&1 || true
+  dismiss_anr
   adb shell am start -W -n "$PKG/.MainActivity" >/dev/null
   sleep 3
 }
@@ -206,6 +218,7 @@ feature() {
   export FEATURE_ID
   slug=$(echo "$title" | tr 'A-Z' 'a-z' | tr -cs 'a-z0-9' '-' | sed 's/-$//')
   log "=== $FEATURE_ID $title"
+  dismiss_anr
   rec_start
   (set -e; "$fn") > "$OUT/logs/$FEATURE_ID-$slug.log" 2>&1
   rc=$?
