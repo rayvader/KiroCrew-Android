@@ -176,7 +176,8 @@ run_jobs() {
   adb shell dumpsys jobscheduler > "$OUT/jobs.txt"
   ids=$(python3 "$HERE/ui.py" jobs "$OUT/jobs.txt" "$PKG")
   [[ -n $ids ]] || fail "the app has no background jobs scheduled"
-  for id in $ids; do adb shell cmd jobscheduler run -f "$PKG" "$id" >/dev/null; done
+  # A job can be rescheduled under a new id between the dump and the run; skip those.
+  for id in $ids; do adb shell cmd jobscheduler run -f "$PKG" "$id" >/dev/null || true; done
   sleep 3
 }
 
@@ -392,12 +393,13 @@ back_to_primary() {
   if has_text "Kiro Crew test gateway Second"; then
     tap_now "Servers"
     tap_now "10.0.2.2"
+    show_active "cleanup, after tapping 10.0.2.2"
     wait_text "Kiro Crew test gateway Primary" 30
   fi
 }
 
 f_servers() {
-  trap 'back_to_primary >/dev/null 2>&1' EXIT
+  trap 'back_to_primary 2>&1 | grep -E "^(--|FAIL)" || true' EXIT
   launch
   tap_now "Servers"
   tap_now "$PKG:id/add"
@@ -418,10 +420,17 @@ f_servers() {
   grep -qF "android.subText=String (Lab)" "$OUT/notif.txt" || fail "notification does not name the server"
   check "with several servers, a notification names its server"
   launch
+  show_active "before switching"
   tap_now "Servers"
   tap_now "10.0.2.2"
+  show_active "after tapping 10.0.2.2"
   wait_text "Kiro Crew test gateway Primary" 30
   check "switching servers from the Servers screen"
+}
+
+# Diagnostics: which server the app has saved as active (root can read app data).
+show_active() {
+  echo "-- $1: $(adb shell cat "/data/data/$PKG/shared_prefs/${PKG}_preferences.xml" | grep -oE 'name="active_profile">[^<]*' | tr -d '\r')"
 }
 
 f_bottom_bar() {
@@ -663,6 +672,8 @@ adb wait-for-device
 [[ $(adb shell id -u | tr -d '\r') == 0 ]] || { echo "adb root is not available on this image"; exit 1; }
 adb shell settings put global auto_time 0
 adb shell svc power stayon true
+# Same first-boot Play services restart as in smoke.sh.
+sleep 60
 adb shell settings put global window_animation_scale 0
 adb shell settings put global transition_animation_scale 0
 adb shell settings put global animator_duration_scale 0
