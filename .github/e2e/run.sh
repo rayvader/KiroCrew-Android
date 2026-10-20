@@ -622,7 +622,8 @@ f_theme() {
   sleep 2
   choose "Accent color" "Emerald"
   sleep 3
-  wait_text "Background alerts"
+  # Settings comes back after the rebuild, still scrolled to the row just changed.
+  wait_text "Emerald"
   back
   # The rebuilt WebView draws the page but often exposes no text to uiautomator,
   # so check the page title the app shows in the top bar instead.
