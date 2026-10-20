@@ -161,9 +161,18 @@ wait_no_notif() {
   fail "notification still there after ${2:-20}s: $1"
 }
 
-# Run the app's background jobs now (WorkManager checks), ignoring their timing and constraints.
+# Move the emulator clock forward (needs adb root, set up below).
+advance_clock() {
+  local now
+  now=$(adb shell date +%s | tr -d '\r')
+  adb shell date -u "$(date -u -d "@$((now + $1))" +%m%d%H%M%Y.%S)" >/dev/null
+}
+
+# Run the app's background checks now. WorkManager skips a periodic job that
+# starts before its slot, so first move the clock past the 15-minute period.
 run_jobs() {
   local ids id
+  advance_clock 960
   adb shell dumpsys jobscheduler > "$OUT/jobs.txt"
   ids=$(python3 "$HERE/ui.py" jobs "$OUT/jobs.txt" "$PKG")
   [[ -n $ids ]] || fail "the app has no background jobs scheduled"
@@ -377,7 +386,18 @@ f_login_renewal() {
   check "the sign-in notice goes away after signing in again"
 }
 
+# Later features expect the first server, so switch back even when a check above failed.
+back_to_primary() {
+  launch
+  if has_text "Kiro Crew test gateway Second"; then
+    tap_now "Servers"
+    tap_now "10.0.2.2"
+    wait_text "Kiro Crew test gateway Primary" 30
+  fi
+}
+
 f_servers() {
+  trap 'back_to_primary >/dev/null 2>&1' EXIT
   launch
   tap_now "Servers"
   tap_now "$PKG:id/add"
@@ -636,6 +656,12 @@ f_app_lock() {
 
 # ---- Run ---------------------------------------------------------------------------------------
 
+# Root is needed to set the clock (google_apis images allow it).
+adb root >/dev/null
+sleep 3
+adb wait-for-device
+[[ $(adb shell id -u | tr -d '\r') == 0 ]] || { echo "adb root is not available on this image"; exit 1; }
+adb shell settings put global auto_time 0
 adb shell svc power stayon true
 adb shell settings put global window_animation_scale 0
 adb shell settings put global transition_animation_scale 0
