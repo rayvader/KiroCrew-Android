@@ -246,6 +246,12 @@ f_add_server() {
   launch
   wait_text "Connect to Kiro Crew"
   check "first start shows the welcome screen"
+  tap_now "How to connect"
+  wait_text "Connect your phone"
+  wait_text "my-host.tailnet.ts.net:5476"
+  check "the welcome screen opens the How to connect guide"
+  tap_now "Got it"
+  wait_no_text "Address examples" 10
   tap_now "Add server"
   tap_now "$PKG:id/url"
   # No scheme typed: host:port must become http://.

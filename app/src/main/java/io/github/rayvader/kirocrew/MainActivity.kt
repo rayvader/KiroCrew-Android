@@ -84,6 +84,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var messageBody: TextView
     private lateinit var messagePrimary: MaterialButton
     private lateinit var messageSecondary: MaterialButton
+    private lateinit var messageHelp: MaterialButton
     private lateinit var insecureHint: TextView
     private lateinit var lockView: View
     private lateinit var fullscreenContainer: FrameLayout
@@ -162,6 +163,7 @@ class MainActivity : AppCompatActivity() {
         swipe.setOnRefreshListener { webView.reload() }
         menuFab.setOnClickListener { showAppMenu(it) }
         insecureHint.setOnClickListener { it.isVisible = false }
+        messageHelp.setOnClickListener { ConnectHelp.show(this) }
         findViewById<MaterialButton>(R.id.unlock_button).setOnClickListener { promptUnlock() }
         bottomNav.setOnItemSelectedListener { item ->
             if (!updatingNav) navShortcuts.getOrNull(item.itemId - NAV_ID_BASE)?.let { navigateTo(it.path) }
@@ -200,6 +202,7 @@ class MainActivity : AppCompatActivity() {
         messageBody = findViewById(R.id.message_body)
         messagePrimary = findViewById(R.id.message_primary)
         messageSecondary = findViewById(R.id.message_secondary)
+        messageHelp = findViewById(R.id.message_help)
         insecureHint = findViewById(R.id.insecure_hint)
         lockView = findViewById(R.id.lock_view)
         fullscreenContainer = findViewById(R.id.fullscreen_container)

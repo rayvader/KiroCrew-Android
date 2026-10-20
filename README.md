@@ -42,6 +42,8 @@ Needs Android 8.0 or newer. Every release is signed with the same key, so new bu
 
 Typing shortcuts: `host:5476` becomes `http://host:5476`. A bare domain becomes `https://`.
 
+The app has these steps too. Tap **How to connect** on the welcome screen, in the Add server box, or in the Servers menu.
+
 You can save several servers and switch between them from the top bar.
 
 ## What works like the browser

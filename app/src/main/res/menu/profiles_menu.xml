@@ -7,4 +7,8 @@
         android:title="@string/scan_qr"
         app:iconTint="?attr/colorOnPrimary"
         app:showAsAction="ifRoom" />
+    <item
+        android:id="@+id/action_connect_help"
+        android:title="@string/connect_help"
+        app:showAsAction="never" />
 </menu>

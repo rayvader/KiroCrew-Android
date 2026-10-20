@@ -92,6 +92,15 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp" />
+
+                    <!-- On the welcome and "Cannot reach the dashboard" screens. -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/message_help"
+                        style="@style/Widget.Material3.Button.TextButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="@string/connect_help" />
                 </LinearLayout>
             </ScrollView>
 

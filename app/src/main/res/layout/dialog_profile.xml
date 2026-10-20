@@ -43,12 +43,25 @@
         android:text="@string/server_url_help"
         android:textAppearance="?attr/textAppearanceBodySmall" />
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/scan"
-        style="@style/Widget.Material3.Button.TextButton.Icon"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:text="@string/scan_qr"
-        app:icon="@drawable/ic_qr"  />
+        android:orientation="horizontal">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/scan"
+            style="@style/Widget.Material3.Button.TextButton.Icon"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/scan_qr"
+            app:icon="@drawable/ic_qr" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/help"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/connect_help" />
+    </LinearLayout>
 </LinearLayout>

@@ -35,6 +35,30 @@
     <string name="error_title">Cannot reach the dashboard</string>
     <string name="error_body">%1$s\n\n%2$s\n\nCheck that the gateway is running and that your phone is on Tailscale or the same network.</string>
     <string name="retry">Try again</string>
+
+    <!-- How to connect -->
+    <string name="connect_help">How to connect</string>
+    <string name="connect_help_body"><![CDATA[<b>You need</b> a running Kiro Crew gateway. Your phone must reach it over Tailscale, the same Wi‑Fi, or HTTPS.<br><br>
+<b>Fast way: scan a QR code</b><br>
+1. On your computer, open the Kiro Crew dashboard.<br>
+2. Open <b>Connect your phone</b>.<br>
+3. In this app, tap <b>Scan QR code</b> and point at the code.<br>
+The app saves the server and signs you in.<br><br>
+<b>Or type the address</b><br>
+1. Tap <b>Add server</b>.<br>
+2. Type the dashboard address and tap <b>Save</b>.<br>
+3. Sign in on the page that opens.<br><br>
+<b>Address examples</b><br>
+• Tailscale: <tt>http://my-host.tailnet.ts.net:5476</tt><br>
+• Same Wi‑Fi: <tt>http://192.168.1.20:5476</tt><br>
+• Own domain: <tt>https://kiro.example.com</tt><br>
+<tt>host:5476</tt> becomes <tt>http://</tt>. A plain domain becomes <tt>https://</tt>.<br><br>
+<b>Will not connect?</b><br>
+• Check Tailscale is on, on both the phone and the gateway.<br>
+• Check the port (default 5476).<br>
+• The gateway must listen beyond localhost to be reached from the phone.<br>
+• A sign-in page that keeps coming back: make a fresh QR code.]]></string>
+    <string name="got_it">Got it</string>
     <string name="insecure_hint">This connection is not encrypted. Use Tailscale or HTTPS. Tap to hide.</string>
 
     <!-- Servers -->
