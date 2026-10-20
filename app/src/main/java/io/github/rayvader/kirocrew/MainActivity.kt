@@ -8,6 +8,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.net.Uri
@@ -61,6 +62,7 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.color.MaterialColors
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.journeyapps.barcodescanner.ScanContract
+import io.github.rayvader.kirocrew.core.AutoText
 import io.github.rayvader.kirocrew.core.LiveTags
 import io.github.rayvader.kirocrew.core.Profile
 import io.github.rayvader.kirocrew.core.Scripts
@@ -388,7 +390,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun applySettings() {
         val s = webView.settings
-        s.textZoom = prefs.textZoom
+        applyTextZoom()
 
         val desktop = prefs.desktopMode
         s.loadWithOverviewMode = desktop
@@ -421,6 +423,21 @@ class MainActivity : AppCompatActivity() {
         applySystemBars()
         updateLauncherShortcuts()
         if (currentPageIsTrusted()) injectPageScripts()
+    }
+
+    /** Page text size: the slider, or with Auto text size the screen-width size with the slider on top. */
+    private fun applyTextZoom() {
+        webView.settings.textZoom = if (prefs.autoTextSize) {
+            AutoText.zoom(resources.configuration.screenWidthDp, prefs.textZoom)
+        } else {
+            prefs.textZoom
+        }
+    }
+
+    // Folding, unfolding and turning the phone change the width without rebuilding the screen.
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        if (!webViewGone && prefs.autoTextSize) applyTextZoom()
     }
 
     private fun desktopUserAgent(ua: String): String =

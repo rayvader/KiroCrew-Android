@@ -83,6 +83,12 @@
             app:key="force_dark_pages"
             app:summary="@string/force_dark_pages_summary"
             app:title="@string/force_dark_pages" />
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:iconSpaceReserved="false"
+            app:key="auto_text_size"
+            app:summary="@string/auto_text_size_summary"
+            app:title="@string/auto_text_size" />
         <SeekBarPreference
             android:max="200"
             app:defaultValue="100"

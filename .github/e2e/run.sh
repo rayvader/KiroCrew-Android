@@ -71,6 +71,21 @@ wait_no_text() {
   fail "still on screen after ${2:-20}s: $1"
 }
 
+# Width in pixels of the node with this exact text.
+node_width() {
+  dump || return 1
+  python3 - "$OUT/ui.xml" "$1" <<'PY'
+import re, sys, xml.etree.ElementTree as ET
+for n in ET.parse(sys.argv[1]).iter("node"):
+    if n.get("text", "") == sys.argv[2] or n.get("content-desc", "") == sys.argv[2]:
+        m = re.match(r"\[(\d+),\d+\]\[(\d+),\d+\]", n.get("bounds", ""))
+        if m and int(m.group(2)) > int(m.group(1)):
+            print(int(m.group(2)) - int(m.group(1)))
+            sys.exit(0)
+sys.exit(1)
+PY
+}
+
 # Width in dp of the node with this resource id.
 width_dp() {
   local px density
@@ -514,6 +529,41 @@ f_start_page() {
   check "start page setting is used by the Start page menu item"
 }
 
+f_auto_text() {
+  launch
+  wait_text "Download blob" 30
+  local before after
+  before=$(node_width "Download blob") || fail "cannot measure the page text"
+  open_settings
+  set_switch "Auto text size" true
+  back
+  sleep 3
+  wait_text "Download blob" 30
+  after=$(node_width "Download blob") || fail "cannot measure the page text"
+  # The emulator is a Pixel 6 (411 dp wide): the automatic size is about 107 %.
+  ((after * 100 >= before * 104)) || fail "text did not grow with Auto text size ($before -> $after px)"
+  ((after * 100 <= before * 112)) || fail "text grew too much ($before -> $after px)"
+  check "Auto text size grows the page text on a wider screen ($before -> $after px)"
+  adb shell settings put system accelerometer_rotation 0
+  adb shell settings put system user_rotation 1
+  sleep 4
+  wait_text "Download blob" 30
+  local wide
+  wide=$(node_width "Download blob") || fail "cannot measure the page text in landscape"
+  adb shell settings put system user_rotation 0
+  sleep 3
+  ((wide > after)) || fail "turning the phone sideways did not make the text larger ($after -> $wide px)"
+  check "turning the phone sideways makes the text larger again"
+  open_settings
+  set_switch "Auto text size" false
+  back
+  sleep 3
+  wait_text "Download blob" 30
+  after=$(node_width "Download blob") || fail "cannot measure the page text"
+  ((after * 100 <= before * 102)) || fail "text stayed large after turning Auto text size off"
+  check "turning Auto text size off brings the old size back"
+}
+
 f_top_bar() {
   launch
   open_settings
@@ -752,6 +802,7 @@ feature "Login renewal and sign-in notice" f_login_renewal
 feature "Several servers" f_servers
 feature "Bottom bar pages and launcher shortcuts" f_bottom_bar
 feature "Start page" f_start_page
+feature "Auto text size" f_auto_text
 feature "Top bar off" f_top_bar
 feature "Pull to refresh" f_pull_to_refresh
 feature "Desktop mode" f_desktop_mode

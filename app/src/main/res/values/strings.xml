@@ -160,6 +160,9 @@ The app saves the server and signs you in.<br><br>
     <string name="force_dark_pages">Force dark pages</string>
     <string name="force_dark_pages_summary">Darken pages that have no dark theme (dark app theme only)</string>
     <string name="text_zoom">Text size</string>
+    <string name="auto_text_size">Auto text size</string>
+    <string name="auto_text_size_summary">Wider screens get larger text, like an unfolded phone or a tablet</string>
+    <string name="text_zoom_auto_summary">Adjusts the automatic size</string>
     <string name="show_toolbar">Show top bar</string>
     <string name="show_toolbar_summary">When off, tap the slim tab on the right edge for the menu</string>
     <string name="show_bottom_bar">Show bottom bar</string>
