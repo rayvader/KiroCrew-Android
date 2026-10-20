@@ -161,7 +161,7 @@ The app saves the server and signs you in.<br><br>
     <string name="force_dark_pages_summary">Darken pages that have no dark theme (dark app theme only)</string>
     <string name="text_zoom">Text size</string>
     <string name="show_toolbar">Show top bar</string>
-    <string name="show_toolbar_summary">When off, a small menu button floats at the top</string>
+    <string name="show_toolbar_summary">When off, tap the slim tab on the right edge for the menu</string>
     <string name="show_bottom_bar">Show bottom bar</string>
     <string name="bottom_shortcuts">Bottom bar pages</string>
     <string name="fullscreen">Full screen</string>
