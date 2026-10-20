@@ -22,6 +22,9 @@ tap() {
 }
 
 adb logcat -c || true
+# On a fresh emulator Google Play services restarts about half a minute after boot,
+# and Android kills apps that use its font provider with it. Let that pass first.
+sleep 60
 adb install -r "$APK"
 # Grant up front so Android's permission dialog does not cover the screens below.
 adb shell pm grant "$PKG" android.permission.POST_NOTIFICATIONS

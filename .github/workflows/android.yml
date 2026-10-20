@@ -134,3 +134,56 @@ jobs:
           path: smoke/
           if-no-files-found: ignore
           retention-days: 14
+
+  e2e:
+    # Every README feature, driven through the real UI on an Android 14 emulator
+    # against a fake gateway (.github/e2e/gateway.py). Each feature is screen-recorded;
+    # the e2e-videos artifact holds the clips, a stitched demo.mp4 and the report.
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: kirocrew-apk
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Start two fake gateways (the emulator reaches them as 10.0.2.2)
+        run: |
+          nohup python3 .github/e2e/gateway.py --port 8000 --name Primary > "$RUNNER_TEMP/gw1.log" 2>&1 &
+          nohup python3 .github/e2e/gateway.py --port 8001 --name Second > "$RUNNER_TEMP/gw2.log" 2>&1 &
+          sleep 1
+          curl -sf http://127.0.0.1:8000/chat > /dev/null
+          curl -sf http://127.0.0.1:8001/chat > /dev/null
+
+      - name: Run the feature tests on the emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          profile: pixel_6
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: bash .github/e2e/run.sh
+
+      - name: Report and demo video
+        if: always()
+        run: |
+          command -v ffmpeg >/dev/null || (sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg fonts-dejavu-core > /dev/null)
+          python3 .github/e2e/report.py e2e-out
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-videos
+          path: e2e-out/
+          if-no-files-found: ignore
+          retention-days: 14
