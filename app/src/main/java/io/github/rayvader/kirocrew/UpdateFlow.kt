@@ -11,6 +11,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import io.github.rayvader.kirocrew.core.Release
+import io.github.rayvader.kirocrew.core.ReleaseNotes
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.thread
 
@@ -66,11 +67,24 @@ class UpdateFlow(private val activity: AppCompatActivity) {
     private fun offer(release: Release) {
         MaterialAlertDialogBuilder(activity)
             .setTitle(activity.getString(R.string.update_title, release.version))
-            .setMessage(activity.getString(R.string.update_body, BuildConfig.VERSION_NAME, release.version))
+            .setMessage(offerText(release))
             .setPositiveButton(R.string.update_now) { _, _ -> start(release) }
             .setNegativeButton(R.string.later) { _, _ -> prefs.snoozeUpdate(release.version) }
             .setNeutralButton(R.string.release_notes) { _, _ -> openPage(release.pageUrl) }
             .show()
+    }
+
+    /** The question, then the release's "What's new" list (a few lines) when it has one. */
+    private fun offerText(release: Release): String {
+        val question = activity.getString(R.string.update_body, BuildConfig.VERSION_NAME, release.version)
+        if (release.notes.isEmpty()) return question
+        val shown = release.notes.take(ReleaseNotes.MAX_ITEMS)
+        val more = release.notes.size - shown.size
+        return buildString {
+            append(question).append("\n\n").append(activity.getString(R.string.update_whats_new))
+            shown.forEach { append("\n• ").append(it) }
+            if (more > 0) append("\n").append(activity.getString(R.string.update_more_changes, more))
+        }
     }
 
     private fun canInstall(): Boolean = activity.packageManager.canRequestPackageInstalls()

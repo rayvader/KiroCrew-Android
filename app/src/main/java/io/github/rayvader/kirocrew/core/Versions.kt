@@ -33,7 +33,32 @@ data class Release(
     val apkSize: Long,
     /** Lower-case hex SHA-256 from GitHub's asset digest, when GitHub gives one. */
     val sha256: String?,
+    /** The "What's new" lines from the release page, as plain text. Empty when there are none. */
+    val notes: List<String> = emptyList(),
 )
+
+/** Reads the "What's new" list out of a release body. The body is text from the web: plain text only, capped. */
+object ReleaseNotes {
+    const val MAX_ITEMS = 8
+    private const val MAX_LINE = 160
+    private const val MAX_BODY = 20_000
+
+    fun whatsNew(body: String?): List<String> {
+        if (body.isNullOrBlank()) return emptyList()
+        val lines = body.take(MAX_BODY).replace("\r\n", "\n").lines()
+        val start = lines.indexOfFirst { it.trim().startsWith("## ") && it.contains("what's new", ignoreCase = true) }
+        if (start < 0) return emptyList()
+        val items = mutableListOf<String>()
+        for (line in lines.drop(start + 1)) {
+            val t = line.trim()
+            if (t.startsWith("## ") || t.startsWith("---") || t.startsWith("**Full changelog")) break
+            val bullet = t.removePrefix("- ").removePrefix("* ").takeIf { t.startsWith("- ") || t.startsWith("* ") } ?: continue
+            val plain = Markdown.plain(bullet).replace('\n', ' ').trim()
+            if (plain.isNotEmpty()) items.add(if (plain.length > MAX_LINE) plain.take(MAX_LINE - 1) + "…" else plain)
+        }
+        return items
+    }
+}
 
 /** Reads a GitHub "latest release" API response. */
 object ReleaseParser {
@@ -60,7 +85,7 @@ object ReleaseParser {
             // Only ever download from GitHub itself, over HTTPS.
             val url = a.text("browser_download_url")?.takeIf { it.startsWith(GITHUB) } ?: continue
             val digest = a.text("digest")?.lowercase()?.removePrefix("sha256:")?.takeIf { HEX_64.matches(it) }
-            return Release(version, page, url, name, a.optLong("size", -1L), digest)
+            return Release(version, page, url, name, a.optLong("size", -1L), digest, ReleaseNotes.whatsNew(o.text("body")))
         }
         return null
     }

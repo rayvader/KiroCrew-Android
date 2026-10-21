@@ -143,6 +143,8 @@ The app saves the server and signs you in.<br><br>
     <string name="update_check_failed">Could not check for updates: %1$s</string>
     <string name="update_title">Version %1$s is ready</string>
     <string name="update_body">You have %1$s. Install %2$s now? Your settings and login stay.</string>
+    <string name="update_whats_new">What\'s new:</string>
+    <string name="update_more_changes">…and %1$d more. Tap What\'s new for all of it.</string>
     <string name="update_now">Update</string>
     <string name="later">Later</string>
     <string name="release_notes">What\'s new</string>
