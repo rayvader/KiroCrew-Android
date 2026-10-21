@@ -86,6 +86,25 @@ sys.exit(1)
 PY
 }
 
+# "r g b" of one screen pixel, from a raw screencap (no PNG decoder needed).
+pixel_at() {
+  adb exec-out screencap > "$OUT/raw.bin" || return 1
+  python3 - "$OUT/raw.bin" "$1" "$2" <<'PY'
+import struct, sys
+data = open(sys.argv[1], "rb").read()
+w, h = struct.unpack_from("<II", data, 0)
+head = len(data) - w * h * 4  # 12 or 16 bytes, by Android version
+x, y = int(sys.argv[2]), int(sys.argv[3])
+o = head + (y * w + x) * 4
+print(data[o], data[o + 1], data[o + 2])
+PY
+}
+
+# Centre "x y" of the node with this resource id.
+centre_of() {
+  dump && python3 "$HERE/ui.py" find "$OUT/ui.xml" "$1"
+}
+
 # Width in dp of the on-screen part of the node with this resource id.
 width_dp() {
   local px density
@@ -626,6 +645,8 @@ f_auto_text() {
 }
 
 f_top_bar() {
+  # Later features need the top bar: put it back even when a check here fails.
+  trap 'restore_top_bar >/dev/null 2>&1' EXIT
   launch
   open_settings
   set_switch "Show top bar" false
@@ -638,11 +659,23 @@ f_top_bar() {
   w=$(width_dp "$PKG:id/menu_fab") || fail "cannot measure the ghost button"
   ((w >= 18 && w <= 34)) || fail "ghost button shows ${w} dp at rest, wanted about half of it (26 dp)"
   check "top bar off shows the Kiro ghost peeking from the right edge (${w} dp visible)"
+  # While the menu is open only its own window is listed, so the slide-in is
+  # read from the screen. The probe sits 36 dp in from the edge and 16 dp above
+  # the button's middle: page at rest, the white button once it has slid in,
+  # and clear of both the ghost picture and the status dot.
+  local cx cy px py r g b density
+  read -r cx cy < <(centre_of "$PKG:id/menu_fab") || fail "cannot find the ghost button"
+  density=$(adb shell wm density | grep -oE '[0-9]+' | tail -1)
+  px=$((W - 36 * density / 160))
+  py=$((cy - 16 * density / 160))
+  read -r r g b < <(pixel_at "$px" "$py")
+  ((r < 200 || g < 200 || b < 200)) || fail "the page at the edge is already white ($r,$g,$b); cannot tell the slide apart"
   tap_now "$PKG:id/menu_fab"
   wait_any "Reload" "Servers"
-  w=$(width_dp "$PKG:id/menu_fab") || fail "cannot measure the ghost button with the menu open"
-  ((w >= 44)) || fail "ghost button did not slide fully in (${w} dp visible)"
-  check "tapping the ghost slides it fully in (${w} dp) and opens the menu"
+  sleep 1
+  read -r r g b < <(pixel_at "$px" "$py")
+  ((r >= 230 && g >= 230 && b >= 230)) || fail "ghost button did not slide fully in (pixel $r,$g,$b)"
+  check "tapping the ghost slides it fully in and opens the menu"
   back
   sleep 1
   w=$(width_dp "$PKG:id/menu_fab") || fail "ghost button gone after closing the menu"
@@ -654,6 +687,16 @@ f_top_bar() {
   back
   wait_text "More options"
   check "the floating menu opens Settings; top bar comes back"
+}
+
+restore_top_bar() {
+  adb shell input keyevent KEYCODE_BACK
+  launch
+  has_text "More options" && return 0
+  tap_now "$PKG:id/menu_fab"
+  tap_now "Settings" menu
+  set_switch "Show top bar" true
+  back
 }
 
 f_pull_to_refresh() {
