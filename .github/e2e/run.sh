@@ -267,6 +267,12 @@ feature() {
   else
     status=PASS
   fi
+  # A passing clip proves nothing the checks did not, so it is dropped to keep the
+  # artifact small. FAIL clips show what went wrong; VIDEO clips are the only proof
+  # of their feature. E2E_KEEP_ALL_VIDEO=1 keeps every clip (for a full demo.mp4).
+  if [[ $status == PASS && ${E2E_KEEP_ALL_VIDEO:-0} != 1 ]]; then
+    rm -f "$OUT/video/$FEATURE_ID-$slug.mp4"
+  fi
   sed 's/^/    /' "$OUT/logs/$FEATURE_ID-$slug.log"
   log "    -> $status"
   printf '%s\t%s\t%s\t%s\n' "$FEATURE_ID" "$status" "$title" "$slug" >> "$RESULTS"
