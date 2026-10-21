@@ -36,6 +36,12 @@
     <string name="error_body">%1$s\n\n%2$s\n\nCheck that the gateway is running and that your phone is on Tailscale or the same network.</string>
     <string name="retry">Try again</string>
 
+    <!-- Gateway status dot. Read aloud by screen readers. -->
+    <string name="status_up">connected</string>
+    <string name="status_down">not connected</string>
+    <string name="status_unknown">checking</string>
+    <string name="status_described">%1$s, %2$s</string>
+
     <!-- How to connect -->
     <string name="connect_help">How to connect</string>
     <string name="connect_help_body"><![CDATA[<b>You need</b> a running Kiro Crew gateway. Your phone must reach it over Tailscale, the same Wi‑Fi, or HTTPS.<br><br>
