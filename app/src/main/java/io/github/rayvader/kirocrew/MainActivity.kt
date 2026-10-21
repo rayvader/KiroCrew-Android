@@ -10,6 +10,8 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.content.res.Configuration
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffColorFilter
 import android.graphics.drawable.LayerDrawable
 import android.graphics.Bitmap
 import android.graphics.Color
@@ -664,7 +666,10 @@ class MainActivity : AppCompatActivity() {
         }
         val size = (resources.displayMetrics.density * 24).toInt()
         val dotSize = (resources.displayMetrics.density * 9).toInt()
-        val base = ContextCompat.getDrawable(this, R.drawable.ic_server)!!.mutate().apply { setTint(onPrimaryColor()) }
+        // A colour filter, not setTint: clearing the menu tint below also clears a drawable's own tint.
+        val base = ContextCompat.getDrawable(this, R.drawable.ic_server)!!.mutate().apply {
+            colorFilter = PorterDuffColorFilter(onPrimaryColor(), PorterDuff.Mode.SRC_IN)
+        }
         val primary = MaterialColors.getColor(toolbar, androidx.appcompat.R.attr.colorPrimary, Color.BLACK)
         val icon = LayerDrawable(arrayOf(base, GatewayStatus.dot(this, state, primary, dotSize))).apply {
             setLayerSize(0, size, size)
