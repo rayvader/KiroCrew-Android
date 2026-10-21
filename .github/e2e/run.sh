@@ -750,9 +750,16 @@ f_gateway_update() {
   check "a Kiro Crew update on the server shows a notification naming the server"
   back
   home
-  adb shell cmd statusbar expand-notifications
-  sleep 2
-  tap_now "Kiro Crew 0.12.0 is ready"
+  # By now the app has several notifications, so Android may bundle them: the
+  # first tap then only opens the bundle. Tap again until the app takes it.
+  local i
+  for i in 1 2 3; do
+    adb shell cmd statusbar expand-notifications
+    sleep 2
+    tap_now "Kiro Crew 0.12.0 is ready"
+    sleep 3
+    app_on_top && break
+  done
   page_path /settings/about 30
   check "tapping it opens the dashboard's Settings > About"
   open_settings
