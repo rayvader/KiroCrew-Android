@@ -246,7 +246,10 @@ class MainActivity : AppCompatActivity() {
         AlertScheduler.apply(this)
         UpdateScheduler.apply(this)
         updates.onResume()
-        if (!lockView.isVisible) updates.autoCheck()
+        if (!lockView.isVisible) {
+            updates.autoCheck()
+            GatewayUpdates.autoCheck(this)
+        }
     }
 
     override fun onPause() {

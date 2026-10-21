@@ -734,6 +734,39 @@ f_update_check() {
   video_only "the result is a short toast ('You have the newest version'), see the video"
 }
 
+f_gateway_update() {
+  # A check the gateway could not finish is no answer: nothing is shown.
+  curl -s "$GW/test/gw-update?latest=0.13.0&status=failed" >/dev/null
+  launch
+  open_settings
+  tap "Check now"
+  sleep 6
+  ! has_notif "Kiro Crew 0.13.0 is ready" || fail "a failed gateway check was shown as an update"
+  check "a failed gateway check shows nothing"
+  curl -s "$GW/test/gw-update?latest=0.12.0" >/dev/null
+  tap "Check now"
+  wait_notif "Kiro Crew 0.12.0 is ready" 30
+  grep -qF "An update is ready on 10.0.2.2" "$OUT/notif.txt" || fail "the notification does not name the server"
+  check "a Kiro Crew update on the server shows a notification naming the server"
+  back
+  home
+  adb shell cmd statusbar expand-notifications
+  sleep 2
+  tap_now "Kiro Crew 0.12.0 is ready"
+  page_path /settings/about 30
+  check "tapping it opens the dashboard's Settings > About"
+  open_settings
+  set_switch "Check for Kiro Crew updates" false
+  curl -s "$GW/test/gw-update?latest=0.12.1" >/dev/null
+  tap "Check now"
+  sleep 6
+  ! has_notif "Kiro Crew 0.12.1 is ready" || fail "the check ran with the setting off"
+  check "turning the setting off stops the check"
+  set_switch "Check for Kiro Crew updates" true
+  back
+  curl -s "$GW/test/gw-update?latest=" >/dev/null
+}
+
 f_sign_out() {
   launch
   open_settings
@@ -812,6 +845,7 @@ feature "Links to other sites" f_external_links
 feature "Privacy screen and keep screen on" f_privacy_and_screen
 feature "Theme and accent color" f_theme
 feature "Update check" f_update_check
+feature "Kiro Crew update check" f_gateway_update
 feature "Sign out" f_sign_out
 feature "App lock" f_app_lock
 

@@ -80,6 +80,18 @@ class Prefs(context: Context) {
     // Updates
     val updateCheck: Boolean get() = sp.getBoolean("update_check", true)
 
+    /** Ask each saved gateway whether Kiro Crew itself has an update. */
+    val gatewayUpdateCheck: Boolean get() = sp.getBoolean("gateway_update_check", true)
+
+    var lastGatewayUpdateCheckAt: Long
+        get() = sp.getLong(K_LAST_GATEWAY_CHECK, 0L)
+        set(value) = sp.edit { putLong(K_LAST_GATEWAY_CHECK, value) }
+
+    /** The gateway version we already sent a notification about for this server. */
+    fun notifiedGatewayUpdate(profileId: String): String? = sp.getString(K_NOTIFIED_GATEWAY + profileId, null)
+    fun setNotifiedGatewayUpdate(profileId: String, version: String) =
+        sp.edit { putString(K_NOTIFIED_GATEWAY + profileId, version) }
+
     var lastUpdateCheckAt: Long
         get() = sp.getLong(K_LAST_UPDATE_CHECK, 0L)
         set(value) = sp.edit { putLong(K_LAST_UPDATE_CHECK, value) }
@@ -122,6 +134,8 @@ class Prefs(context: Context) {
         private const val K_MARKER = "alert_marker_"
         private const val K_SIGN_IN = "alert_sign_in_"
         private const val K_LAST_UPDATE_CHECK = "last_update_check"
+        private const val K_LAST_GATEWAY_CHECK = "last_gateway_update_check"
+        private const val K_NOTIFIED_GATEWAY = "notified_gateway_update_"
         private const val K_NOTIFIED_UPDATE = "notified_update"
         private const val K_SNOOZED_UPDATE = "snoozed_update"
         private const val K_SNOOZED_AT = "snoozed_update_at"

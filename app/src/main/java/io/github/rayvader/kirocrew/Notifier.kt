@@ -14,6 +14,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import io.github.rayvader.kirocrew.core.Alert
+import io.github.rayvader.kirocrew.core.GatewayUpdateParser
 import io.github.rayvader.kirocrew.core.LiveTags
 import io.github.rayvader.kirocrew.core.Profile
 import io.github.rayvader.kirocrew.core.Shortcut
@@ -32,6 +33,7 @@ object Notifier {
     private const val ID_SIGN_IN = 4
     private const val ID_INSTALL = 5
     private const val ID_SUMMARY = 6
+    private const val ID_GATEWAY_UPDATE = 7
     private const val GROUP_ALERTS = "io.github.rayvader.kirocrew.ALERTS"
     private const val MAX_TITLE = 200
     private const val MAX_BODY = 1000
@@ -135,6 +137,19 @@ object Notifier {
             .setContentIntent(PendingIntent.getActivity(ctx, "update".hashCode(), intent, PI_FLAGS))
             .build()
         post(ctx, "update", ID_UPDATE, n)
+    }
+
+    /** Kiro Crew itself has an update on this server. Tapping opens the dashboard's About page. */
+    fun postGatewayUpdate(ctx: Context, profile: Profile, version: String) {
+        val key = "gateway-update:${profile.id}"
+        val body = ctx.getString(R.string.gateway_update_body, profile.name)
+        val n = base(ctx, CH_APP)
+            .setContentTitle(ctx.getString(R.string.gateway_update_title, version))
+            .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setContentIntent(open(ctx, key, profile.id, GatewayUpdateParser.ABOUT_PATH))
+            .build()
+        post(ctx, key, ID_GATEWAY_UPDATE, n)
     }
 
     /** Shown when Android blocked the app from opening the install screen by itself. */

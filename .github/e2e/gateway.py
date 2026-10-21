@@ -99,6 +99,8 @@ class State:
         self.sessions = set()
         self.refresh_allowed = True
         self.toast_armed = False
+        # What GET /api/update/check reports: no update until a test sets one.
+        self.gw_update = {"latest": "", "status": "succeeded"}
         self.notes = []
         self.listeners = []
         self.log = []
@@ -218,6 +220,25 @@ def make_handler(state):
                     state.sessions.clear()
                     state.refresh_allowed = q.get("refresh", "allow") == "allow"
                 return self.send(200, "expired")
+            if p == "/test/gw-update":
+                # Set what /api/update/check answers: latest=VERSION, status=succeeded|failed|unchecked.
+                with state.lock:
+                    state.gw_update = {"latest": q.get("latest", ""), "status": q.get("status", "succeeded")}
+                return self.send(200, "ok")
+            if p == "/api/update/check":
+                if not self.signed_in():
+                    return self.send(401, "{}", "application/json")
+                with state.lock:
+                    gw = dict(state.gw_update)
+                checked = gw["status"] == "succeeded"
+                body = {
+                    "check_status": gw["status"],
+                    "update_available": (bool(gw["latest"]) if checked else None),
+                    "latest_version": gw["latest"],
+                    "latest_version_display": gw["latest"],
+                    "current_version": "0.11.0",
+                }
+                return self.send(200, json.dumps(body), "application/json")
             if p == "/api/notifications":
                 if not self.signed_in():
                     return self.send(401, json.dumps({"error": "auth"}), "application/json")

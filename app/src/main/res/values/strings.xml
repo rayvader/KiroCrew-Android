@@ -118,7 +118,11 @@ The app saves the server and signs you in.<br><br>
     <string name="channel_chat">Chat updates</string>
     <string name="channel_chat_desc">A chat finished or is waiting for you</string>
     <string name="channel_app">App updates and sign-in</string>
-    <string name="channel_app_desc">New app versions, and when a server needs you to sign in again</string>
+    <string name="channel_app_desc">New app and Kiro Crew versions, and when a server needs you to sign in again</string>
+    <string name="gateway_update_check">Check for Kiro Crew updates</string>
+    <string name="gateway_update_check_summary">Tells you when a server has a new Kiro Crew version. Checks when the app opens and once a day.</string>
+    <string name="gateway_update_title">Kiro Crew %1$s is ready</string>
+    <string name="gateway_update_body">An update is ready on %1$s. Tap to open About, then tap Update.</string>
     <string name="channel_connection">Instant alerts connection</string>
     <string name="channel_connection_desc">The small notice shown while instant alerts stay connected</string>
     <plurals name="more_alerts">

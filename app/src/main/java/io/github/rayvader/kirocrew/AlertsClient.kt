@@ -5,6 +5,8 @@ import android.webkit.CookieManager
 import android.webkit.WebSettings
 import io.github.rayvader.kirocrew.core.Alert
 import io.github.rayvader.kirocrew.core.AlertFeed
+import io.github.rayvader.kirocrew.core.GatewayUpdate
+import io.github.rayvader.kirocrew.core.GatewayUpdateParser
 import io.github.rayvader.kirocrew.core.Profile
 import io.github.rayvader.kirocrew.core.SseParser
 import io.github.rayvader.kirocrew.core.UrlTools
@@ -90,8 +92,22 @@ class AlertsClient(private val ctx: Context) {
 
     private class Response(val code: Int, val body: String, val authRequired: Boolean)
 
-    private fun request(profile: Profile): Response {
-        val conn = open(profile, "GET", FEED_PATH)
+    /**
+     * Asks the gateway whether Kiro Crew itself has an update. Null when there is
+     * none, when the gateway could not tell, or when it cannot be reached.
+     */
+    fun gatewayUpdate(profile: Profile): GatewayUpdate? = try {
+        var res = request(profile, GatewayUpdateParser.PATH)
+        if (res.authRequired && refresh(profile)) res = request(profile, GatewayUpdateParser.PATH)
+        if (res.code == 200) GatewayUpdateParser.parse(res.body) else null
+    } catch (e: IOException) {
+        null
+    } catch (e: RuntimeException) {
+        null
+    }
+
+    private fun request(profile: Profile, path: String = FEED_PATH): Response {
+        val conn = open(profile, "GET", path)
         try {
             conn.setRequestProperty("Accept", "application/json")
             val code = conn.responseCode

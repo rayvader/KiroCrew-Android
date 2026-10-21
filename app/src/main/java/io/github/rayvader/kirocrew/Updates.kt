@@ -71,7 +71,9 @@ object UpdateScheduler {
 
     fun apply(ctx: Context) {
         val wm = WorkManager.getInstance(ctx.applicationContext)
-        if (!Prefs(ctx).updateCheck) {
+        val prefs = Prefs(ctx)
+        // One daily job covers both: app updates from GitHub and Kiro Crew updates from each gateway.
+        if (!prefs.updateCheck && !prefs.gatewayUpdateCheck) {
             wm.cancelUniqueWork(WORK)
             return
         }
@@ -86,12 +88,14 @@ object UpdateScheduler {
 class UpdateWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
     override fun doWork(): Result {
         val prefs = Prefs(applicationContext)
-        if (!prefs.updateCheck) return Result.success()
-        val check = UpdateChecker.check()
-        if (check is UpdateChecker.Check.Newer && prefs.notifiedUpdateVersion != check.release.version) {
-            prefs.notifiedUpdateVersion = check.release.version
-            Notifier.postUpdate(applicationContext, check.release.version)
+        if (prefs.updateCheck) {
+            val check = UpdateChecker.check()
+            if (check is UpdateChecker.Check.Newer && prefs.notifiedUpdateVersion != check.release.version) {
+                prefs.notifiedUpdateVersion = check.release.version
+                Notifier.postUpdate(applicationContext, check.release.version)
+            }
         }
+        GatewayUpdates.checkAll(applicationContext)
         return Result.success()
     }
 }

@@ -94,6 +94,10 @@ Your settings and login stay. Android refuses an APK signed with a different key
 
 Turn it off, or check by hand, in **Settings → About**.
 
+### Kiro Crew updates
+
+The app also asks each saved server whether **Kiro Crew itself** has a new version (the gateway's `GET /api/update/check`). It checks when the app opens (at most every 6 hours), once a day in the background, and when you tap **Check now**. A new version shows one notification per server. Tap it to open that dashboard's **Settings → About**, then tap **Update** there. The app never updates the gateway itself, and a check the gateway could not finish shows nothing. Turn it off in **Settings → Notifications → Check for Kiro Crew updates**.
+
 ## Customization
 
 Open **Settings** from the app menu.
