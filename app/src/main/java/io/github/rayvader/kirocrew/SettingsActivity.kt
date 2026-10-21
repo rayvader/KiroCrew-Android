@@ -181,6 +181,7 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
             Prefs(requireContext()).activeProfile?.let { getString(R.string.servers_active, it.name) }
                 ?: getString(R.string.servers_summary)
         updateNotifySummary()
+        updateTextSizeSummary()
     }
 
     private fun askNotifyPermissionIfNeeded() {
@@ -195,6 +196,13 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
             // Switched off in Android settings: only the user can turn it back on there.
             Toast.makeText(ctx, R.string.notify_denied_toast, Toast.LENGTH_LONG).show()
         }
+    }
+
+    /** With Auto text size on, the slider is an adjustment on top of the automatic size. */
+    private fun updateTextSizeSummary() {
+        val ctx = context ?: return
+        findPreference<Preference>("text_zoom")?.summary =
+            if (Prefs(ctx).autoTextSize) getString(R.string.text_zoom_auto_summary) else null
     }
 
     private fun updateNotifySummary() {
@@ -218,6 +226,7 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
                 updateNotifySummary()
             }
             "update_check" -> UpdateScheduler.apply(requireContext())
+            "auto_text_size" -> updateTextSizeSummary()
         }
     }
 }

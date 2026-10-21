@@ -43,6 +43,7 @@ class Prefs(context: Context) {
     val accent: String get() = sp.getString("accent", "purple") ?: "purple"
     val forceDarkPages: Boolean get() = sp.getBoolean("force_dark_pages", false)
     val textZoom: Int get() = sp.getInt("text_zoom", 100).coerceIn(50, 200)
+    val autoTextSize: Boolean get() = sp.getBoolean("auto_text_size", false)
     val showToolbar: Boolean get() = sp.getBoolean("show_toolbar", true)
     val showBottomBar: Boolean get() = sp.getBoolean("show_bottom_bar", true)
     val fullscreen: Boolean get() = sp.getBoolean("fullscreen", false)
