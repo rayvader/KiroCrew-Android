@@ -734,6 +734,49 @@ f_update_check() {
   video_only "the result is a short toast ('You have the newest version'), see the video"
 }
 
+f_gateway_update() {
+  # A check the gateway could not finish is no answer: nothing is shown.
+  curl -s "$GW/test/gw-update?latest=0.13.0&status=failed" >/dev/null
+  launch
+  open_settings
+  tap "Check now"
+  sleep 6
+  ! has_notif "Kiro Crew 0.13.0 is ready" || fail "a failed gateway check was shown as an update"
+  check "a failed gateway check shows nothing"
+  curl -s "$GW/test/gw-update?latest=0.12.0" >/dev/null
+  tap "Check now"
+  wait_notif "Kiro Crew 0.12.0 is ready" 30
+  grep -qF "An update is ready on 10.0.2.2" "$OUT/notif.txt" || fail "the notification does not name the server"
+  check "a Kiro Crew update on the server shows a notification naming the server"
+  back
+  home
+  # The notification was posted with the app open, so its pop-up banner is still
+  # showing. Wait for it to go, or the tap lands on whatever is under it.
+  sleep 10
+  # Android may bundle the app's notifications: a tap then only opens the bundle.
+  # Tap until the notification is used up (it closes itself when tapped).
+  local i
+  for i in 1 2 3; do
+    adb shell cmd statusbar expand-notifications
+    sleep 3
+    tap_now "Kiro Crew 0.12.0 is ready"
+    sleep 3
+    has_notif "Kiro Crew 0.12.0 is ready" || break
+  done
+  page_path /settings/about 30
+  check "tapping it opens the dashboard's Settings > About"
+  open_settings
+  set_switch "Check for Kiro Crew updates" false
+  curl -s "$GW/test/gw-update?latest=0.12.1" >/dev/null
+  tap "Check now"
+  sleep 6
+  ! has_notif "Kiro Crew 0.12.1 is ready" || fail "the check ran with the setting off"
+  check "turning the setting off stops the check"
+  set_switch "Check for Kiro Crew updates" true
+  back
+  curl -s "$GW/test/gw-update?latest=" >/dev/null
+}
+
 f_sign_out() {
   launch
   open_settings
@@ -760,7 +803,16 @@ f_app_lock() {
   # The system unlock prompt sits on top of the app's own lock screen.
   wait_any "Unlock Kiro Crew" "Kiro Crew is locked"
   check "app lock asks for the screen lock after leaving the app"
-  sleep 2
+  # The app's own lock screen can show before Android's PIN prompt opens.
+  # Type only into the prompt: open it with Unlock when it has not come up.
+  local i
+  for i in 1 2 3; do
+    sleep 3
+    has_text "Unlock Kiro Crew" && break
+    tap_now "Unlock" || true
+  done
+  wait_text "Unlock Kiro Crew" 15
+  sleep 1
   type_text "1234"
   adb shell input keyevent KEYCODE_ENTER
   wait_no_text "Kiro Crew is locked" 20
@@ -812,6 +864,7 @@ feature "Links to other sites" f_external_links
 feature "Privacy screen and keep screen on" f_privacy_and_screen
 feature "Theme and accent color" f_theme
 feature "Update check" f_update_check
+feature "Kiro Crew update check" f_gateway_update
 feature "Sign out" f_sign_out
 feature "App lock" f_app_lock
 

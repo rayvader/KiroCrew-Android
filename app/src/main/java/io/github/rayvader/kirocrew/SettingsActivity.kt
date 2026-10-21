@@ -87,6 +87,7 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
 
         findPreference<Preference>("check_updates")?.setOnPreferenceClickListener {
             (activity as? SettingsActivity)?.updates?.checkNow()
+            GatewayUpdates.checkNow(ctx)
             true
         }
 
@@ -225,7 +226,7 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
                 AlertScheduler.apply(requireContext())
                 updateNotifySummary()
             }
-            "update_check" -> UpdateScheduler.apply(requireContext())
+            "update_check", "gateway_update_check" -> UpdateScheduler.apply(requireContext())
             "auto_text_size" -> updateTextSizeSummary()
         }
     }

@@ -50,6 +50,13 @@
             app:key="alert_mode"
             app:title="@string/alert_mode"
             app:useSimpleSummaryProvider="true" />
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:dependency="notify_enabled"
+            app:iconSpaceReserved="false"
+            app:key="gateway_update_check"
+            app:summary="@string/gateway_update_check_summary"
+            app:title="@string/gateway_update_check" />
         <Preference
             app:dependency="notify_enabled"
             app:iconSpaceReserved="false"
