@@ -448,7 +448,7 @@ f_login_renewal() {
 back_to_primary() {
   launch
   if has_text "Kiro Crew test gateway Second"; then
-    tap_now "Servers"
+    tap_now "$PKG:id/action_servers"
     tap_now "10.0.2.2"
     show_active "cleanup, after tapping 10.0.2.2"
     wait_text "Kiro Crew test gateway Primary" 30
@@ -458,7 +458,7 @@ back_to_primary() {
 f_servers() {
   trap 'back_to_primary 2>&1 | grep -E "^(--|FAIL)" || true' EXIT
   launch
-  tap_now "Servers"
+  tap_now "$PKG:id/action_servers"
   tap_now "$PKG:id/add"
   tap_now "$PKG:id/name"
   type_text "Lab"
@@ -478,7 +478,7 @@ f_servers() {
   check "with several servers, a notification names its server"
   launch
   show_active "before switching"
-  tap_now "Servers"
+  tap_now "$PKG:id/action_servers"
   tap_now "10.0.2.2"
   show_active "after tapping 10.0.2.2"
   wait_text "Kiro Crew test gateway Primary" 30
@@ -488,6 +488,60 @@ f_servers() {
 # Diagnostics: which server the app has saved as active (root can read app data).
 show_active() {
   echo "-- $1: $(adb shell cat "/data/data/$PKG/shared_prefs/${PKG}_preferences.xml" | grep -oE 'name="active_profile">[^<]*' | tr -d '\r')"
+}
+
+# Long-press the first node with this exact text.
+long_press() {
+  local xy
+  dump && xy=$(python3 "$HERE/ui.py" find "$OUT/ui.xml" "$1") || fail "cannot find to long-press: $1"
+  read -r x y <<<"$xy"
+  adb shell input swipe "$x" "$y" "$x" "$y" 900
+  sleep 1.5
+}
+
+f_status_dot() {
+  trap 'back_to_primary 2>&1 | grep -E "^(--|FAIL)" || true' EXIT
+  launch
+  wait_text "Kiro Crew test gateway Primary" 30
+  wait_text "Servers, connected" 40
+  check "the Servers icon says connected (green dot) for a running gateway"
+  # A server nothing listens on.
+  tap_now "$PKG:id/action_servers"
+  tap_now "$PKG:id/add"
+  tap_now "$PKG:id/name"
+  type_text "Offline"
+  tap_now "$PKG:id/url"
+  type_text "10.0.2.2:8009"
+  adb shell input keyevent KEYCODE_ENTER
+  wait_text "Cannot reach the dashboard" 30
+  wait_text "Servers, not connected" 20
+  check "the Servers icon says not connected (red dot) when the gateway does not answer"
+  tap_now "$PKG:id/action_servers"
+  wait_text "Offline, not connected" 20
+  wait_text "10.0.2.2, connected" 20
+  check "the Servers list shows a dot for each server"
+  long_press "Offline"
+  tap_now "Delete"
+  tap_now "android:id/button1"
+  wait_no_text "Offline" 10
+  tap_now "10.0.2.2"
+  wait_text "Kiro Crew test gateway Primary" 30
+  wait_text "Servers, connected" 20
+  open_settings
+  set_switch "Show top bar" false
+  back
+  wait_text "Menu, connected" 20
+  check "with the top bar off, the edge tab carries the dot"
+  open_settings_from_tab
+  set_switch "Show top bar" true
+  back
+  wait_text "More options"
+}
+
+open_settings_from_tab() {
+  tap_now "$PKG:id/menu_fab"
+  tap_now "Settings" menu
+  wait_text "Background alerts" 10
 }
 
 f_bottom_bar() {
@@ -852,6 +906,7 @@ feature "Instant alerts" f_instant_alerts
 feature "Background alerts every 15 minutes" f_periodic_alerts
 feature "Login renewal and sign-in notice" f_login_renewal
 feature "Several servers" f_servers
+feature "Connection status dot" f_status_dot
 feature "Bottom bar pages and launcher shortcuts" f_bottom_bar
 feature "Start page" f_start_page
 feature "Auto text size" f_auto_text

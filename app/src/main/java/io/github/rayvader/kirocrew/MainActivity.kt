@@ -8,7 +8,10 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.ColorStateList
 import android.content.res.Configuration
+import android.graphics.Canvas
+import android.graphics.drawable.BitmapDrawable
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.net.Uri
@@ -42,6 +45,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.content.pm.ShortcutInfoCompat
+import androidx.core.view.MenuItemCompat
 import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
 import androidx.core.view.WindowCompat
@@ -63,6 +67,7 @@ import com.google.android.material.color.MaterialColors
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.journeyapps.barcodescanner.ScanContract
 import io.github.rayvader.kirocrew.core.AutoText
+import io.github.rayvader.kirocrew.core.Connection
 import io.github.rayvader.kirocrew.core.LiveTags
 import io.github.rayvader.kirocrew.core.Profile
 import io.github.rayvader.kirocrew.core.Scripts
@@ -84,6 +89,15 @@ class MainActivity : AppCompatActivity() {
     private lateinit var menuFab: View
     private lateinit var menuTab: View
     private lateinit var menuTabIcon: View
+    private lateinit var menuTabDot: View
+    private val statusListener: () -> Unit = { showStatus() }
+    private val statusHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val statusTick = object : Runnable {
+        override fun run() {
+            prefs.profiles.firstOrNull { it.id == loadedProfileId }?.let { GatewayStatus.probe(it) }
+            statusHandler.postDelayed(this, STATUS_INTERVAL_MS)
+        }
+    }
     private lateinit var messageView: View
     private lateinit var messageTitle: TextView
     private lateinit var messageBody: TextView
@@ -204,6 +218,7 @@ class MainActivity : AppCompatActivity() {
         menuFab = findViewById(R.id.menu_fab)
         menuTab = findViewById(R.id.menu_tab)
         menuTabIcon = findViewById(R.id.menu_tab_icon)
+        menuTabDot = findViewById(R.id.menu_tab_dot)
         messageView = findViewById(R.id.message)
         messageTitle = findViewById(R.id.message_title)
         messageBody = findViewById(R.id.message_body)
@@ -241,6 +256,10 @@ class MainActivity : AppCompatActivity() {
             }
         }
         refreshLock()
+        GatewayStatus.addListener(statusListener)
+        showStatus()
+        statusHandler.removeCallbacks(statusTick)
+        statusHandler.post(statusTick)
         webView.onResume()
         app.visibleProfileId = loadedProfileId
         AlertScheduler.apply(this)
@@ -253,6 +272,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onPause() {
+        // The dot only checks while you can see it.
+        statusHandler.removeCallbacks(statusTick)
+        GatewayStatus.removeListener(statusListener)
         app.visibleProfileId = null
         if (!webViewGone) webView.onPause()
         CookieManager.getInstance().flush()
@@ -323,6 +345,8 @@ class MainActivity : AppCompatActivity() {
         if (isResumedNow()) app.visibleProfileId = profile.id
         refreshPageHooks()
         webView.loadUrl(UrlTools.buildUrl(profile.baseUrl, path))
+        showStatus()
+        GatewayStatus.probe(profile)
     }
 
     private fun navigateTo(path: String) {
@@ -632,6 +656,63 @@ class MainActivity : AppCompatActivity() {
         return true
     }
 
+    /** The Servers icon carries the status dot on its top-right corner. */
+    override fun onPrepareOptionsMenu(menu: Menu): Boolean {
+        val item = menu.findItem(R.id.action_servers) ?: return super.onPrepareOptionsMenu(menu)
+        val state = GatewayStatus.state(loadedProfileId)
+        if (loadedProfileId == null) {
+            item.icon = ContextCompat.getDrawable(this, R.drawable.ic_server)
+            MenuItemCompat.setIconTintList(item, ColorStateList.valueOf(onPrimaryColor()))
+            MenuItemCompat.setContentDescription(item, getString(R.string.servers))
+            return super.onPrepareOptionsMenu(menu)
+        }
+        // Drawn into one finished picture: the menu re-tints or clears the tint of any
+        // drawable it is given, which painted the server shape purple on the purple bar.
+        val size = (resources.displayMetrics.density * 24).toInt()
+        val dotSize = (resources.displayMetrics.density * 9).toInt()
+        val primary = MaterialColors.getColor(toolbar, androidx.appcompat.R.attr.colorPrimary, Color.BLACK)
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        ContextCompat.getDrawable(this, R.drawable.ic_server)!!.mutate().apply {
+            setTint(onPrimaryColor())
+            setBounds(0, 0, size, size)
+            draw(canvas)
+        }
+        GatewayStatus.dot(this, state, primary, dotSize).apply {
+            setBounds(size - dotSize, 0, size, dotSize)
+            draw(canvas)
+        }
+        MenuItemCompat.setIconTintList(item, null)
+        item.icon = BitmapDrawable(resources, bitmap)
+        MenuItemCompat.setContentDescription(
+            item, getString(R.string.status_described, getString(R.string.servers), GatewayStatus.label(this, state))
+        )
+        return super.onPrepareOptionsMenu(menu)
+    }
+
+    private fun onPrimaryColor(): Int =
+        MaterialColors.getColor(toolbar, com.google.android.material.R.attr.colorOnPrimary, Color.WHITE)
+
+    /** Repaints both dots: the Servers icon and the edge tab. */
+    private fun showStatus() {
+        if (isFinishing || isDestroyed) return
+        invalidateOptionsMenu()
+        val state = GatewayStatus.state(loadedProfileId)
+        val primary = MaterialColors.getColor(toolbar, androidx.appcompat.R.attr.colorPrimary, Color.BLACK)
+        menuTabDot.isVisible = loadedProfileId != null
+        menuTabDot.background = GatewayStatus.dot(this, state, primary, (resources.displayMetrics.density * 8).toInt())
+        menuFab.contentDescription = if (loadedProfileId == null) {
+            getString(R.string.menu)
+        } else {
+            getString(R.string.status_described, getString(R.string.menu), GatewayStatus.label(this, state))
+        }
+    }
+
+    private fun setStatus(state: Connection) {
+        val id = loadedProfileId ?: return
+        GatewayStatus.set(id, state)
+    }
+
     override fun onOptionsItemSelected(item: MenuItem): Boolean =
         onMenuAction(item.itemId) || super.onOptionsItemSelected(item)
 
@@ -932,6 +1013,7 @@ class MainActivity : AppCompatActivity() {
             swipe.isRefreshing = false
             progress.hide()
             if (!mainFrameError) hideMessage()
+            if (!mainFrameError && currentPageIsTrusted()) setStatus(Connection.UP)
             if (currentPageIsTrusted()) {
                 injectPageScripts()
                 if (!mainFrameError) maybeAskNotifyPermission()
@@ -949,6 +1031,7 @@ class MainActivity : AppCompatActivity() {
             if (!request.isForMainFrame) return
             mainFrameError = true
             failingUrl = request.url.toString()
+            if (currentServerBase?.let { UrlTools.isSameServer(it, failingUrl ?: "") } == true) setStatus(Connection.DOWN)
             swipe.isRefreshing = false
             progress.hide()
             showError(error.description?.toString() ?: "")
@@ -1075,5 +1158,7 @@ class MainActivity : AppCompatActivity() {
         private const val TAB_OPEN_DP = 52
         private const val TAB_REST_ALPHA = 0.85f
         private const val TAB_ANIM_MS = 180L
+        /** How often the status dot asks the gateway while the app is open. */
+        private const val STATUS_INTERVAL_MS = 30_000L
     }
 }

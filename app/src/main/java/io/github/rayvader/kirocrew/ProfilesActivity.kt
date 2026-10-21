@@ -18,7 +18,9 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
 import com.google.android.material.appbar.MaterialToolbar
+import android.graphics.Color
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.color.MaterialColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.textfield.TextInputEditText
@@ -84,6 +86,20 @@ class ProfilesActivity : AppCompatActivity() {
     override fun onSupportNavigateUp(): Boolean {
         finish()
         return true
+    }
+
+    private val statusListener: () -> Unit = { adapter.notifyDataSetChanged() }
+
+    override fun onResume() {
+        super.onResume()
+        GatewayStatus.addListener(statusListener)
+        adapter.notifyDataSetChanged()
+        prefs.profiles.forEach { GatewayStatus.probe(it) }
+    }
+
+    override fun onPause() {
+        GatewayStatus.removeListener(statusListener)
+        super.onPause()
     }
 
     private fun refresh() {
@@ -215,6 +231,13 @@ class ProfilesActivity : AppCompatActivity() {
             view.findViewById<TextView>(R.id.title).text = item.name
             view.findViewById<TextView>(R.id.subtitle).text = item.baseUrl
             view.findViewById<ImageView>(R.id.active).isVisible = item.id == activeId
+            val state = GatewayStatus.state(item.id)
+            val ring = MaterialColors.getColor(view, android.R.attr.colorBackground, Color.WHITE)
+            val size = (context.resources.displayMetrics.density * 12).toInt()
+            view.findViewById<View>(R.id.status_dot).background = GatewayStatus.dot(context, state, ring, size)
+            view.contentDescription = context.getString(
+                R.string.status_described, item.name, GatewayStatus.label(context, state)
+            )
             return view
         }
     }

@@ -46,6 +46,8 @@ The app has these steps too. Tap **How to connect** on the welcome screen, in th
 
 You can save several servers and switch between them from the top bar.
 
+A small dot shows whether the app can reach the server: **green** connected, **red** not connected, grey while it checks. It sits on the Servers icon in the top bar (on the edge tab when the top bar is off), and on each server in the Servers list. The app asks the server's public `/api/health` every 30 seconds, only while the app is open.
+
 ## What works like the browser
 
 - Chat with live streaming (WebSocket)

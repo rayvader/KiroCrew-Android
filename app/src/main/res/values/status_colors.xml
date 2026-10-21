@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The gateway status dot. Fixed colours: they mean the same in every theme. -->
+<resources>
+    <color name="status_up">#FF2ECC71</color>
+    <color name="status_down">#FFFF4D4D</color>
+    <color name="status_unknown">#FF9E9E9E</color>
+</resources>
