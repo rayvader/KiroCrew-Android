@@ -803,7 +803,16 @@ f_app_lock() {
   # The system unlock prompt sits on top of the app's own lock screen.
   wait_any "Unlock Kiro Crew" "Kiro Crew is locked"
   check "app lock asks for the screen lock after leaving the app"
-  sleep 2
+  # The app's own lock screen can show before Android's PIN prompt opens.
+  # Type only into the prompt: open it with Unlock when it has not come up.
+  local i
+  for i in 1 2 3; do
+    sleep 3
+    has_text "Unlock Kiro Crew" && break
+    tap_now "Unlock" || true
+  done
+  wait_text "Unlock Kiro Crew" 15
+  sleep 1
   type_text "1234"
   adb shell input keyevent KEYCODE_ENTER
   wait_no_text "Kiro Crew is locked" 20
