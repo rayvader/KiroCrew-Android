@@ -86,17 +86,18 @@ sys.exit(1)
 PY
 }
 
-# Width in dp of the node with this resource id.
+# Width in dp of the on-screen part of the node with this resource id.
 width_dp() {
   local px density
   dump || return 1
-  px=$(python3 - "$OUT/ui.xml" "$1" <<'PY'
+  px=$(python3 - "$OUT/ui.xml" "$1" "$W" <<'PY'
 import re, sys, xml.etree.ElementTree as ET
+screen = int(sys.argv[3])
 for n in ET.parse(sys.argv[1]).iter("node"):
     if n.get("resource-id") == sys.argv[2]:
-        m = re.match(r"\[(\d+),\d+\]\[(\d+),\d+\]", n.get("bounds", ""))
+        m = re.match(r"\[(-?\d+),\d+\]\[(-?\d+),\d+\]", n.get("bounds", ""))
         if m:
-            print(int(m.group(2)) - int(m.group(1)))
+            print(max(0, min(int(m.group(2)), screen) - max(int(m.group(1)), 0)))
             sys.exit(0)
 sys.exit(1)
 PY
@@ -630,20 +631,23 @@ f_top_bar() {
   set_switch "Show top bar" false
   back
   dump
-  python3 "$HERE/ui.py" find "$OUT/ui.xml" "$PKG:id/menu_fab" >/dev/null || fail "no menu tab"
+  python3 "$HERE/ui.py" find "$OUT/ui.xml" "$PKG:id/menu_fab" >/dev/null || fail "no ghost menu button"
+  python3 "$HERE/ui.py" find "$OUT/ui.xml" "$PKG:id/menu_tab_icon" >/dev/null || fail "no ghost on the button"
   ! python3 "$HERE/ui.py" find "$OUT/ui.xml" "More options" >/dev/null || fail "top bar still shown"
   local w
-  w=$(width_dp "$PKG:id/menu_fab") || fail "cannot measure the menu tab"
-  ((w <= 40)) || fail "menu tab is ${w} dp wide at rest, wanted a slim tab"
-  check "top bar off shows a slim tab on the right edge (${w} dp)"
+  w=$(width_dp "$PKG:id/menu_fab") || fail "cannot measure the ghost button"
+  ((w >= 18 && w <= 34)) || fail "ghost button shows ${w} dp at rest, wanted about half of it (26 dp)"
+  check "top bar off shows the Kiro ghost peeking from the right edge (${w} dp visible)"
   tap_now "$PKG:id/menu_fab"
   wait_any "Reload" "Servers"
-  check "tapping the tab opens the menu"
+  w=$(width_dp "$PKG:id/menu_fab") || fail "cannot measure the ghost button with the menu open"
+  ((w >= 44)) || fail "ghost button did not slide fully in (${w} dp visible)"
+  check "tapping the ghost slides it fully in (${w} dp) and opens the menu"
   back
   sleep 1
-  w=$(width_dp "$PKG:id/menu_fab") || fail "menu tab gone after closing the menu"
-  ((w <= 40)) || fail "menu tab stayed open (${w} dp) after closing the menu"
-  check "closing the menu slides the tab back"
+  w=$(width_dp "$PKG:id/menu_fab") || fail "ghost button gone after closing the menu"
+  ((w <= 34)) || fail "ghost button stayed fully in (${w} dp) after closing the menu"
+  check "closing the menu slides the ghost back to peeking"
   tap_now "$PKG:id/menu_fab"
   tap_now "Settings" menu
   set_switch "Show top bar" true

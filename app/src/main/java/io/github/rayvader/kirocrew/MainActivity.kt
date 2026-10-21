@@ -1,7 +1,6 @@
 package io.github.rayvader.kirocrew
 
 import android.Manifest
-import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
 import android.content.ClipData
@@ -87,8 +86,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var swipe: SwipeRefreshLayout
     private lateinit var bottomNav: BottomNavigationView
     private lateinit var menuFab: View
-    private lateinit var menuTab: View
-    private lateinit var menuTabIcon: View
     private lateinit var menuTabDot: View
     private val statusListener: () -> Unit = { showStatus() }
     private val statusHandler = android.os.Handler(android.os.Looper.getMainLooper())
@@ -216,8 +213,8 @@ class MainActivity : AppCompatActivity() {
         webView = findViewById(R.id.webview)
         bottomNav = findViewById(R.id.bottom_nav)
         menuFab = findViewById(R.id.menu_fab)
-        menuTab = findViewById(R.id.menu_tab)
-        menuTabIcon = findViewById(R.id.menu_tab_icon)
+        // The ghost starts half hidden past the right edge.
+        menuFab.translationX = GHOST_HIDDEN_DP * resources.displayMetrics.density
         menuTabDot = findViewById(R.id.menu_tab_dot)
         messageView = findViewById(R.id.message)
         messageTitle = findViewById(R.id.message_title)
@@ -725,24 +722,15 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** The edge tab slides out while its menu is open, and back when the menu closes. */
+    /** The peeking ghost slides fully in while its menu is open, and back out when the menu closes. */
     private fun openEdgeMenu() {
         setMenuTabOpen(true)
-        showAppMenu(menuTab) { setMenuTabOpen(false) }
+        showAppMenu(menuFab) { setMenuTabOpen(false) }
     }
 
     private fun setMenuTabOpen(open: Boolean) {
-        val density = resources.displayMetrics.density
-        val target = ((if (open) TAB_OPEN_DP else TAB_REST_DP) * density).toInt()
-        ValueAnimator.ofInt(menuTab.layoutParams.width, target).apply {
-            duration = TAB_ANIM_MS
-            addUpdateListener { a ->
-                menuTab.layoutParams = menuTab.layoutParams.apply { width = a.animatedValue as Int }
-            }
-            start()
-        }
-        menuTab.animate().alpha(if (open) 1f else TAB_REST_ALPHA).setDuration(TAB_ANIM_MS).start()
-        menuTabIcon.animate().alpha(if (open) 1f else 0f).setDuration(TAB_ANIM_MS).start()
+        val shift = (if (open) -GHOST_OPEN_INSET_DP else GHOST_HIDDEN_DP) * resources.displayMetrics.density
+        menuFab.animate().translationX(shift).setDuration(TAB_ANIM_MS).start()
     }
 
     private fun onMenuAction(id: Int): Boolean {
@@ -1154,9 +1142,10 @@ class MainActivity : AppCompatActivity() {
         const val EXTRA_SHOW_UPDATE = "io.github.rayvader.kirocrew.SHOW_UPDATE"
         private const val STATE_PROFILE = "loaded_profile"
         private const val NAV_ID_BASE = 100
-        private const val TAB_REST_DP = 14
-        private const val TAB_OPEN_DP = 52
-        private const val TAB_REST_ALPHA = 0.85f
+        /** How far the 48 dp ghost button hides past the right edge at rest (about half of it). */
+        private const val GHOST_HIDDEN_DP = 22f
+        /** How far it sits in from the edge while its menu is open. */
+        private const val GHOST_OPEN_INSET_DP = 6f
         private const val TAB_ANIM_MS = 180L
         /** How often the status dot asks the gateway while the app is open. */
         private const val STATUS_INTERVAL_MS = 30_000L

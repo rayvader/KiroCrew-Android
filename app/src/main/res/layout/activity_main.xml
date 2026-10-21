@@ -116,15 +116,16 @@
                 android:textColor="?attr/colorOnErrorContainer"
                 android:visibility="gone" />
 
-            <!-- When the top bar is off: a slim tab on the right edge. Tapping it
-                 slides it out and opens the menu. The touch area is wider than the tab. -->
+            <!-- When the top bar is off: the Kiro ghost on a round white button,
+                 half hidden past the right edge as if peeking in. Tapping it slides
+                 it fully in and opens the menu; closing the menu slides it back.
+                 The button is the touch area, so the visible half is tappable. -->
             <FrameLayout
                 android:id="@+id/menu_fab"
-                android:layout_width="wrap_content"
-                android:layout_height="72dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:layout_gravity="top|end"
                 android:layout_marginTop="48dp"
-                android:minWidth="32dp"
                 android:clickable="true"
                 android:focusable="true"
                 android:contentDescription="@string/menu"
@@ -132,34 +133,32 @@
 
                 <FrameLayout
                     android:id="@+id/menu_tab"
-                    android:layout_width="14dp"
-                    android:layout_height="56dp"
-                    android:layout_gravity="center_vertical|end"
-                    android:alpha="0.85"
-                    android:background="@drawable/menu_tab_bg"
-                    android:duplicateParentState="true">
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:layout_gravity="center"
+                    android:background="@drawable/ghost_button_bg"
+                    android:duplicateParentState="true"
+                    android:elevation="4dp">
 
                     <ImageView
                         android:id="@+id/menu_tab_icon"
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:layout_gravity="center_vertical|start"
-                        android:layout_marginStart="14dp"
-                        android:alpha="0"
+                        android:layout_width="30dp"
+                        android:layout_height="30dp"
+                        android:layout_gravity="center"
                         android:contentDescription="@null"
-                        android:src="@drawable/ic_menu"
-                        app:tint="?attr/colorOnPrimary" />
-
-                    <!-- Gateway status: green connected, red not connected, grey checking. -->
-                    <View
-                        android:id="@+id/menu_tab_dot"
-                        android:layout_width="8dp"
-                        android:layout_height="8dp"
-                        android:layout_gravity="top|start"
-                        android:layout_marginStart="3dp"
-                        android:layout_marginTop="3dp"
-                        android:importantForAccessibility="no" />
+                        android:src="@drawable/ic_ghost_button" />
                 </FrameLayout>
+
+                <!-- Gateway status: green connected, red not connected, grey checking. -->
+                <View
+                    android:id="@+id/menu_tab_dot"
+                    android:layout_width="10dp"
+                    android:layout_height="10dp"
+                    android:layout_gravity="top|start"
+                    android:layout_marginStart="3dp"
+                    android:layout_marginTop="3dp"
+                    android:elevation="5dp"
+                    android:importantForAccessibility="no" />
             </FrameLayout>
         </FrameLayout>
 
