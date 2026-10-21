@@ -90,7 +90,7 @@ The app checks this repo's [latest release](https://github.com/rayvader/KiroCrew
 3. The APK downloads from GitHub. The app checks its size and SHA-256 against the release.
 4. Android shows its install screen. Tap **Update**.
 
-Your settings and login stay. Android refuses an APK signed with a different key, so only builds from this repo's CI install over yours. Builds from branches are pre-releases and are never offered.
+Your settings and login stay. Android refuses an APK signed with a different key, so only builds from this repo's CI install over yours. Builds from branches are pre-releases and are never offered. Every release page has a **What's new** list: the pull requests merged since the last release (commits, for pre-releases).
 
 Turn it off, or check by hand, in **Settings → About**.
 
