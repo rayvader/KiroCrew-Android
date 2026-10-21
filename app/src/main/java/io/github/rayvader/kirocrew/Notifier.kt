@@ -35,6 +35,7 @@ object Notifier {
     private const val ID_SUMMARY = 6
     private const val ID_GATEWAY_UPDATE = 7
     private const val GROUP_ALERTS = "io.github.rayvader.kirocrew.ALERTS"
+    private const val GROUP_GATEWAY_UPDATES = "io.github.rayvader.kirocrew.GATEWAY_UPDATES"
     private const val MAX_TITLE = 200
     private const val MAX_BODY = 1000
 
@@ -148,6 +149,9 @@ object Notifier {
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setContentIntent(open(ctx, key, profile.id, GatewayUpdateParser.ABOUT_PATH))
+            // Its own group: otherwise Android bundles it with the app's other
+            // notifications, and a tap on the bundle never reaches this one.
+            .setGroup(GROUP_GATEWAY_UPDATES)
             .build()
         post(ctx, key, ID_GATEWAY_UPDATE, n)
     }
