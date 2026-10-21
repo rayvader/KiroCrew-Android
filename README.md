@@ -85,7 +85,7 @@ How it works: the app reads `GET /api/notifications` on your gateway with the ap
 
 The app checks this repo's [latest release](https://github.com/rayvader/KiroCrew-Android/releases/latest) when it opens (at most every 6 hours) and once a day in the background.
 
-1. When a newer version exists, you get a prompt or a notification.
+1. When a newer version exists, you get a prompt or a notification. The prompt lists what's new in that version (the same list as on the release page).
 2. Tap **Update**. The first time, Android asks you to let Kiro Crew install apps.
 3. The APK downloads from GitHub. The app checks its size and SHA-256 against the release.
 4. Android shows its install screen. Tap **Update**.
