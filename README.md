@@ -167,7 +167,7 @@ The APK lands in `app/build/outputs/apk/release/`. Without signing secrets it is
 
 CI ([workflow](.github/workflows/android.yml)) runs the unit tests, builds the APK, runs a smoke test on an Android 14 emulator, and publishes a GitHub release on every push to `main`. Pushes to `feat/**` and `fix/**` branches publish pre-releases. The smoke test also checks that a page notification reaches Android.
 
-The `e2e` job tests each feature above through the real app on the emulator, against a fake gateway ([`.github/e2e/`](.github/e2e/)). It records a video of every feature. The run page shows a table of what passed. The `e2e-videos` artifact holds the clips and a `demo.mp4` of all of them.
+The `e2e` job tests each feature above through the real app on the emulator, against a fake gateway ([`.github/e2e/`](.github/e2e/)). It films each feature, but keeps a clip only when the feature fails, or when it can only be checked by eye (theme colors, the update toast). The run page shows a table of what passed. The `e2e-videos` artifact holds the kept clips and a `demo.mp4` of them. For a clip of every feature, start the workflow by hand (**Actions → Android APK → Run workflow**) with **keep_all_video** ticked.
 
 A fork built by its own CI checks its own releases for updates (`GITHUB_REPOSITORY` is baked in at build time).
 

@@ -10,6 +10,11 @@ on:
       - "fix/**"
   pull_request:
   workflow_dispatch:
+    inputs:
+      keep_all_video:
+        description: "Keep the e2e video of every feature, not only failed ones (for a full demo.mp4)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -148,7 +153,8 @@ jobs:
   e2e:
     # Every README feature, driven through the real UI on an Android 14 emulator
     # against a fake gateway (.github/e2e/gateway.py). Each feature is screen-recorded;
-    # the e2e-videos artifact holds the clips, a stitched demo.mp4 and the report.
+    # the e2e-videos artifact keeps the clips of failed and video-only features (all of
+    # them with the keep_all_video run input), a stitched demo.mp4 and the report.
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -175,6 +181,8 @@ jobs:
 
       - name: Run the feature tests on the emulator
         uses: reactivecircus/android-emulator-runner@v2
+        env:
+          E2E_KEEP_ALL_VIDEO: ${{ inputs.keep_all_video && '1' || '0' }}
         with:
           api-level: 34
           arch: x86_64

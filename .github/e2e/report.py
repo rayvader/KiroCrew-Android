@@ -46,7 +46,8 @@ def write_report(out, rows):
     for r in rows:
         checked = "<br>".join(r["checks"] + r["notes"]) or "-"
         md.append(f"| {r['id']} | {r['title']} | {ICON[r['status']]} {r['status']} | {checked} |")
-    md += ["", "Videos, screenshots and logs are in the `e2e-videos` artifact. `demo.mp4` shows every feature at 2x speed."]
+    md += ["", "Screenshots and logs are in the `e2e-videos` artifact, with a video of each failed or video-only "
+               "feature (passing clips are dropped). `demo.mp4` joins the kept clips at 2x speed."]
     text = "\n".join(md) + "\n"
     (out / "report.md").write_text(text)
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
