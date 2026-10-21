@@ -10,9 +10,8 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.content.res.Configuration
-import android.graphics.PorterDuff
-import android.graphics.PorterDuffColorFilter
-import android.graphics.drawable.LayerDrawable
+import android.graphics.Canvas
+import android.graphics.drawable.BitmapDrawable
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.net.Uri
@@ -664,21 +663,24 @@ class MainActivity : AppCompatActivity() {
             MenuItemCompat.setContentDescription(item, getString(R.string.servers))
             return super.onPrepareOptionsMenu(menu)
         }
+        // Drawn into one finished picture: the menu re-tints or clears the tint of any
+        // drawable it is given, which painted the server shape purple on the purple bar.
         val size = (resources.displayMetrics.density * 24).toInt()
         val dotSize = (resources.displayMetrics.density * 9).toInt()
-        // A colour filter, not setTint: clearing the menu tint below also clears a drawable's own tint.
-        val base = ContextCompat.getDrawable(this, R.drawable.ic_server)!!.mutate().apply {
-            colorFilter = PorterDuffColorFilter(onPrimaryColor(), PorterDuff.Mode.SRC_IN)
-        }
         val primary = MaterialColors.getColor(toolbar, androidx.appcompat.R.attr.colorPrimary, Color.BLACK)
-        val icon = LayerDrawable(arrayOf(base, GatewayStatus.dot(this, state, primary, dotSize))).apply {
-            setLayerSize(0, size, size)
-            setLayerSize(1, dotSize, dotSize)
-            setLayerGravity(1, Gravity.TOP or Gravity.END)
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        ContextCompat.getDrawable(this, R.drawable.ic_server)!!.mutate().apply {
+            setTint(onPrimaryColor())
+            setBounds(0, 0, size, size)
+            draw(canvas)
         }
-        // The icon is tinted by hand above: a menu tint would paint the dot white too.
+        GatewayStatus.dot(this, state, primary, dotSize).apply {
+            setBounds(size - dotSize, 0, size, dotSize)
+            draw(canvas)
+        }
         MenuItemCompat.setIconTintList(item, null)
-        item.icon = icon
+        item.icon = BitmapDrawable(resources, bitmap)
         MenuItemCompat.setContentDescription(
             item, getString(R.string.status_described, getString(R.string.servers), GatewayStatus.label(this, state))
         )
