@@ -13,6 +13,7 @@ import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.graphics.Rect
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -833,6 +834,12 @@ class MainActivity : AppCompatActivity() {
                 }
             }
             true
+        }
+
+        // The ghost sits inside the edge strip where a swipe means "Back". Keep that gesture off
+        // the ghost, or a drag that starts on it would go back instead.
+        menuFab.addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
+            ViewCompat.setSystemGestureExclusionRects(v, listOf(Rect(0, 0, v.width, v.height)))
         }
 
         // Dragging is not possible with a screen reader, so offer the side change as an action.
