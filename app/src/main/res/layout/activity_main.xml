@@ -116,7 +116,7 @@
                 android:textColor="?attr/colorOnErrorContainer"
                 android:visibility="gone" />
 
-            <!-- When the top bar is off: the Kiro ghost on a round white button,
+            <!-- When the top bar is off: the white Kiro ghost, outlined in purple, on a round white button,
                  half hidden past the right edge as if peeking in. Tapping it slides
                  it fully in and opens the menu; closing the menu slides it back.
                  The button is the touch area, so the visible half is tappable. -->
