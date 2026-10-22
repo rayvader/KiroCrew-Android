@@ -531,6 +531,8 @@ f_status_dot() {
   wait_text "Kiro Crew test gateway Primary" 30
   wait_text "Servers, connected" 40
   check "the Servers icon says connected (green dot) for a running gateway"
+  wait_text "Kiro Crew, connected" 10
+  check "the ghost in the top bar carries the same status"
   # A server nothing listens on.
   tap_now "$PKG:id/action_servers"
   tap_now "$PKG:id/add"
@@ -542,6 +544,8 @@ f_status_dot() {
   wait_text "Cannot reach the dashboard" 30
   wait_text "Servers, not connected" 20
   check "the Servers icon says not connected (red dot) when the gateway does not answer"
+  wait_text "Kiro Crew, not connected" 10
+  check "the ghost in the top bar says not connected too"
   tap_now "$PKG:id/action_servers"
   wait_text "Offline, not connected" 20
   wait_text "10.0.2.2, connected" 20

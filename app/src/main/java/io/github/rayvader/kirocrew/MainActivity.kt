@@ -93,6 +93,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var bottomNav: BottomNavigationView
     private lateinit var menuFab: View
     private lateinit var menuTabDot: View
+    private lateinit var topGhost: View
+    private lateinit var topGhostDot: View
     private var ghostMenuOpen = false
     private var ghostDragging = false
     private val statusListener: () -> Unit = { showStatus() }
@@ -225,6 +227,8 @@ class MainActivity : AppCompatActivity() {
         // Where the ghost rests depends on the page size, so it is placed whenever the page is laid out.
         (menuFab.parent as View).addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> placeGhost() }
         menuTabDot = findViewById(R.id.menu_tab_dot)
+        topGhost = findViewById(R.id.top_ghost)
+        topGhostDot = findViewById(R.id.top_ghost_dot)
         messageView = findViewById(R.id.message)
         messageTitle = findViewById(R.id.message_title)
         messageBody = findViewById(R.id.message_body)
@@ -443,6 +447,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         toolbar.isVisible = prefs.showToolbar
+        topGhost.isVisible = prefs.showToolbar
         menuFab.isVisible = !prefs.showToolbar
         placeGhost()
         rebuildBottomNav()
@@ -708,6 +713,13 @@ class MainActivity : AppCompatActivity() {
         val primary = MaterialColors.getColor(toolbar, androidx.appcompat.R.attr.colorPrimary, Color.BLACK)
         menuTabDot.isVisible = loadedProfileId != null
         menuTabDot.background = GatewayStatus.dot(this, state, primary, (resources.displayMetrics.density * 8).toInt())
+        topGhostDot.isVisible = loadedProfileId != null
+        topGhostDot.background = GatewayStatus.dot(this, state, primary, (resources.displayMetrics.density * 8).toInt())
+        topGhost.contentDescription = if (loadedProfileId == null) {
+            getString(R.string.app_name)
+        } else {
+            getString(R.string.status_described, getString(R.string.app_name), GatewayStatus.label(this, state))
+        }
         menuFab.contentDescription = if (loadedProfileId == null) {
             getString(R.string.menu)
         } else {

@@ -9,15 +9,56 @@
         android:layout_height="match_parent"
         android:orientation="vertical">
 
-        <com.google.android.material.appbar.MaterialToolbar
-            android:id="@+id/toolbar"
+        <!-- The Kiro ghost on a white circle sits over the start of the top bar; the bar's
+             start inset keeps its title clear of it. The dot shows whether the gateway can
+             be reached, in the same colours as on the Servers icon. -->
+        <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
-            android:background="?attr/colorPrimary"
-            android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
-            app:popupTheme="@style/ThemeOverlay.AppCompat.DayNight"
-            app:subtitleTextColor="?attr/colorOnPrimary"
-            app:titleTextColor="?attr/colorOnPrimary" />
+            android:layout_height="wrap_content">
+
+            <com.google.android.material.appbar.MaterialToolbar
+                android:id="@+id/toolbar"
+                android:layout_width="match_parent"
+                android:layout_height="?attr/actionBarSize"
+                android:background="?attr/colorPrimary"
+                android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
+                app:contentInsetStart="64dp"
+                app:popupTheme="@style/ThemeOverlay.AppCompat.DayNight"
+                app:subtitleTextColor="?attr/colorOnPrimary"
+                app:titleTextColor="?attr/colorOnPrimary" />
+
+            <FrameLayout
+                android:id="@+id/top_ghost"
+                android:layout_width="40dp"
+                android:layout_height="?attr/actionBarSize"
+                android:layout_marginStart="12dp"
+                android:focusable="true">
+
+                <FrameLayout
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:layout_gravity="center"
+                    android:background="@drawable/ghost_button_bg">
+
+                    <ImageView
+                        android:layout_width="26dp"
+                        android:layout_height="26dp"
+                        android:layout_gravity="center"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_ghost_button" />
+                </FrameLayout>
+
+                <View
+                    android:id="@+id/top_ghost_dot"
+                    android:layout_width="10dp"
+                    android:layout_height="10dp"
+                    android:layout_gravity="top|start"
+                    android:layout_marginStart="1dp"
+                    android:layout_marginTop="9dp"
+                    android:elevation="2dp"
+                    android:importantForAccessibility="no" />
+            </FrameLayout>
+        </FrameLayout>
 
         <com.google.android.material.progressindicator.LinearProgressIndicator
             android:id="@+id/progress"
