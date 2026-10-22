@@ -447,6 +447,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         toolbar.isVisible = prefs.showToolbar
+        topGhost.isVisible = prefs.showToolbar
         menuFab.isVisible = !prefs.showToolbar
         placeGhost()
         rebuildBottomNav()
