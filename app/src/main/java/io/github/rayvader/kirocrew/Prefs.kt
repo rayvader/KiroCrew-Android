@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
 import androidx.preference.PreferenceManager
+import io.github.rayvader.kirocrew.core.GhostPlacement
 import io.github.rayvader.kirocrew.core.Profile
 import io.github.rayvader.kirocrew.core.ProfileCodec
 import io.github.rayvader.kirocrew.core.Shortcut
@@ -45,6 +46,16 @@ class Prefs(context: Context) {
     val textZoom: Int get() = sp.getInt("text_zoom", 100).coerceIn(50, 200)
     val autoTextSize: Boolean get() = sp.getBoolean("auto_text_size", false)
     val showToolbar: Boolean get() = sp.getBoolean("show_toolbar", true)
+
+    /** Which edge the menu ghost rests on when the top bar is off. */
+    var ghostOnLeft: Boolean
+        get() = sp.getBoolean("ghost_left", false)
+        set(value) = sp.edit { putBoolean("ghost_left", value) }
+
+    /** The ghost's height as a share of the free height; [GhostPlacement.UNSET] until it is moved. */
+    var ghostY: Float
+        get() = sp.getFloat("ghost_y", GhostPlacement.UNSET)
+        set(value) = sp.edit { putFloat("ghost_y", value) }
     val showBottomBar: Boolean get() = sp.getBoolean("show_bottom_bar", true)
     val fullscreen: Boolean get() = sp.getBoolean("fullscreen", false)
     val pullToRefresh: Boolean get() = sp.getBoolean("pull_to_refresh", false)

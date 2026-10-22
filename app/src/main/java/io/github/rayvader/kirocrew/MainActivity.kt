@@ -18,9 +18,12 @@ import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
 import android.view.Gravity
+import android.view.HapticFeedbackConstants
 import android.view.Menu
 import android.view.MenuItem
+import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.view.ViewGroup
 import android.view.WindowManager
 import android.webkit.CookieManager
@@ -47,6 +50,7 @@ import androidx.core.content.pm.ShortcutInfoCompat
 import androidx.core.view.MenuItemCompat
 import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
+import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -67,6 +71,7 @@ import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.journeyapps.barcodescanner.ScanContract
 import io.github.rayvader.kirocrew.core.AutoText
 import io.github.rayvader.kirocrew.core.Connection
+import io.github.rayvader.kirocrew.core.GhostPlacement
 import io.github.rayvader.kirocrew.core.LiveTags
 import io.github.rayvader.kirocrew.core.Profile
 import io.github.rayvader.kirocrew.core.Scripts
@@ -87,6 +92,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var bottomNav: BottomNavigationView
     private lateinit var menuFab: View
     private lateinit var menuTabDot: View
+    private var ghostMenuOpen = false
+    private var ghostDragging = false
     private val statusListener: () -> Unit = { showStatus() }
     private val statusHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private val statusTick = object : Runnable {
@@ -178,6 +185,7 @@ class MainActivity : AppCompatActivity() {
         setupBackHandling()
         swipe.setOnRefreshListener { webView.reload() }
         menuFab.setOnClickListener { openEdgeMenu() }
+        setupGhostDrag()
         insecureHint.setOnClickListener { it.isVisible = false }
         messageHelp.setOnClickListener { ConnectHelp.show(this) }
         findViewById<MaterialButton>(R.id.unlock_button).setOnClickListener { promptUnlock() }
@@ -213,8 +221,8 @@ class MainActivity : AppCompatActivity() {
         webView = findViewById(R.id.webview)
         bottomNav = findViewById(R.id.bottom_nav)
         menuFab = findViewById(R.id.menu_fab)
-        // The ghost starts half hidden past the right edge.
-        menuFab.translationX = GHOST_HIDDEN_DP * resources.displayMetrics.density
+        // Where the ghost rests depends on the page size, so it is placed whenever the page is laid out.
+        (menuFab.parent as View).addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> placeGhost() }
         menuTabDot = findViewById(R.id.menu_tab_dot)
         messageView = findViewById(R.id.message)
         messageTitle = findViewById(R.id.message_title)
@@ -435,6 +443,7 @@ class MainActivity : AppCompatActivity() {
 
         toolbar.isVisible = prefs.showToolbar
         menuFab.isVisible = !prefs.showToolbar
+        placeGhost()
         rebuildBottomNav()
         updateBottomNavVisibility()
         swipe.isEnabled = prefs.pullToRefresh
@@ -713,8 +722,8 @@ class MainActivity : AppCompatActivity() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean =
         onMenuAction(item.itemId) || super.onOptionsItemSelected(item)
 
-    private fun showAppMenu(anchor: View, onDismiss: (() -> Unit)? = null) {
-        PopupMenu(this, anchor, Gravity.END).apply {
+    private fun showAppMenu(anchor: View, gravity: Int = Gravity.END, onDismiss: (() -> Unit)? = null) {
+        PopupMenu(this, anchor, gravity).apply {
             menuInflater.inflate(R.menu.main_menu, menu)
             setOnMenuItemClickListener { onMenuAction(it.itemId) }
             onDismiss?.let { done -> setOnDismissListener { done() } }
@@ -725,12 +734,113 @@ class MainActivity : AppCompatActivity() {
     /** The peeking ghost slides fully in while its menu is open, and back out when the menu closes. */
     private fun openEdgeMenu() {
         setMenuTabOpen(true)
-        showAppMenu(menuFab) { setMenuTabOpen(false) }
+        val gravity = if (prefs.ghostOnLeft) Gravity.START else Gravity.END
+        showAppMenu(menuFab, gravity) { setMenuTabOpen(false) }
     }
 
     private fun setMenuTabOpen(open: Boolean) {
-        val shift = (if (open) -GHOST_OPEN_INSET_DP else GHOST_HIDDEN_DP) * resources.displayMetrics.density
-        menuFab.animate().translationX(shift).setDuration(TAB_ANIM_MS).start()
+        ghostMenuOpen = open
+        placeGhost(animate = true)
+    }
+
+    /** Puts the ghost on its saved edge and height; half hidden at rest, a little further in while its menu is open. */
+    private fun placeGhost(animate: Boolean = false) {
+        val page = menuFab.parent as? View ?: return
+        if (page.width == 0 || ghostDragging) return
+        val d = resources.displayMetrics.density
+        val size = GHOST_SIZE_DP * d
+        val left = prefs.ghostOnLeft
+        val x = GhostPlacement.restX(
+            left, page.width.toFloat(), size, GHOST_HIDDEN_DP * d, GHOST_OPEN_INSET_DP * d, ghostMenuOpen,
+        )
+        val y = GhostPlacement.top(prefs.ghostY, page.height.toFloat(), size, GHOST_DEFAULT_TOP_DP * d)
+        faceGhostInward(left, (3 * d).toInt())
+        if (animate) {
+            menuFab.animate().translationX(x).translationY(y).setDuration(TAB_ANIM_MS).start()
+        } else {
+            menuFab.animate().cancel()
+            menuFab.translationX = x
+            menuFab.translationY = y
+        }
+    }
+
+    /** On the left edge the ghost looks right, and the status dot moves to the half that stays on screen. */
+    private fun faceGhostInward(left: Boolean, margin: Int) {
+        findViewById<View>(R.id.menu_tab_icon).scaleX = if (left) -1f else 1f
+        val lp = menuTabDot.layoutParams as FrameLayout.LayoutParams
+        val gravity = Gravity.TOP or (if (left) Gravity.END else Gravity.START)
+        if (lp.gravity == gravity) return
+        lp.gravity = gravity
+        lp.marginStart = margin
+        lp.marginEnd = margin
+        menuTabDot.layoutParams = lp
+    }
+
+    /** Dragging the ghost moves it; letting go snaps it to the nearer edge and saves the spot. A tap opens the menu. */
+    private fun setupGhostDrag() {
+        val slop = ViewConfiguration.get(this).scaledTouchSlop
+        var downX = 0f
+        var downY = 0f
+        var startX = 0f
+        var startY = 0f
+        var moved = false
+
+        fun drop(v: View, page: View) {
+            val size = GHOST_SIZE_DP * resources.displayMetrics.density
+            prefs.ghostOnLeft = GhostPlacement.leftSide(v.translationX + size / 2, page.width.toFloat())
+            prefs.ghostY = GhostPlacement.fraction(v.translationY, page.height.toFloat(), size)
+            ghostDragging = false
+            placeGhost(animate = true)
+        }
+
+        menuFab.setOnTouchListener { v, e ->
+            val page = v.parent as View
+            val d = resources.displayMetrics.density
+            val size = GHOST_SIZE_DP * d
+            when (e.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    downX = e.rawX
+                    downY = e.rawY
+                    startX = v.translationX
+                    startY = v.translationY
+                    moved = false
+                    v.isPressed = true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val dx = e.rawX - downX
+                    val dy = e.rawY - downY
+                    if (!moved && dx * dx + dy * dy > slop * slop) {
+                        moved = true
+                        ghostDragging = true
+                        v.isPressed = false
+                        v.animate().cancel()
+                        page.requestDisallowInterceptTouchEvent(true)
+                        v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                    }
+                    if (moved) {
+                        val hidden = GHOST_HIDDEN_DP * d
+                        v.translationX = (startX + dx).coerceIn(-hidden, page.width - size + hidden)
+                        v.translationY = (startY + dy).coerceIn(0f, (page.height - size).coerceAtLeast(0f))
+                    }
+                }
+                MotionEvent.ACTION_UP -> {
+                    v.isPressed = false
+                    if (moved) drop(v, page) else v.performClick()
+                }
+                MotionEvent.ACTION_CANCEL -> {
+                    v.isPressed = false
+                    if (moved) drop(v, page)
+                }
+            }
+            true
+        }
+
+        // Dragging is not possible with a screen reader, so offer the side change as an action.
+        ViewCompat.addAccessibilityAction(menuFab, getString(R.string.move_menu_ghost)) { _, _ ->
+            prefs.ghostOnLeft = !prefs.ghostOnLeft
+            placeGhost(animate = true)
+            true
+        }
     }
 
     private fun onMenuAction(id: Int): Boolean {
@@ -1142,7 +1252,10 @@ class MainActivity : AppCompatActivity() {
         const val EXTRA_SHOW_UPDATE = "io.github.rayvader.kirocrew.SHOW_UPDATE"
         private const val STATE_PROFILE = "loaded_profile"
         private const val NAV_ID_BASE = 100
-        /** How far the 48 dp ghost button hides past the right edge at rest (about half of it). */
+        private const val GHOST_SIZE_DP = 48f
+        /** Distance from the top of the page where the ghost starts, until it is moved. */
+        private const val GHOST_DEFAULT_TOP_DP = 48f
+        /** How far the 48 dp ghost button hides past its edge at rest (about half of it). */
         private const val GHOST_HIDDEN_DP = 22f
         /** How far it sits in from the edge while its menu is open. */
         private const val GHOST_OPEN_INSET_DP = 6f

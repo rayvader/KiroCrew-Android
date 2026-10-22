@@ -681,6 +681,28 @@ f_top_bar() {
   w=$(width_dp "$PKG:id/menu_fab") || fail "ghost button gone after closing the menu"
   ((w <= 34)) || fail "ghost button stayed fully in (${w} dp) after closing the menu"
   check "closing the menu slides the ghost back to peeking"
+  # Drag it across the page and down: it snaps to the left edge, still half hidden,
+  # and a tap there still opens the menu. Then drag it back to the right edge.
+  local dx dy
+  read -r cx cy < <(centre_of "$PKG:id/menu_fab") || fail "cannot find the ghost button"
+  adb shell input swipe "$cx" "$cy" $((W / 5)) $((cy + H / 6)) 600
+  sleep 1.5
+  read -r dx dy < <(centre_of "$PKG:id/menu_fab") || fail "ghost button gone after dragging it"
+  ((dx < W / 2)) || fail "dragging the ghost left left it at x=$dx of $W"
+  ((dy > cy + H / 12)) || fail "dragging the ghost down left it at y=$dy (was $cy)"
+  w=$(width_dp "$PKG:id/menu_fab") || fail "cannot measure the ghost after dragging it"
+  ((w >= 18 && w <= 34)) || fail "dragged ghost shows ${w} dp, wanted about half of it (26 dp)"
+  check "dragging the ghost moves it to the left edge at a new height"
+  tap_now "$PKG:id/menu_fab"
+  wait_any "Reload" "Servers"
+  back
+  sleep 1
+  check "the ghost on the left edge still opens the menu"
+  adb shell input swipe "$dx" "$dy" $((W * 4 / 5)) "$cy" 600
+  sleep 1.5
+  read -r dx dy < <(centre_of "$PKG:id/menu_fab") || fail "ghost button gone after dragging it back"
+  ((dx > W / 2)) || fail "dragging the ghost right left it at x=$dx of $W"
+  check "dragging the ghost back puts it on the right edge again"
   tap_now "$PKG:id/menu_fab"
   tap_now "Settings" menu
   set_switch "Show top bar" true
