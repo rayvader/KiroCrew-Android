@@ -814,7 +814,7 @@ class MainActivity : AppCompatActivity() {
                         ghostDragging = true
                         v.isPressed = false
                         v.animate().cancel()
-                        page.requestDisallowInterceptTouchEvent(true)
+                        v.parent.requestDisallowInterceptTouchEvent(true)
                         v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                     }
                     if (moved) {
