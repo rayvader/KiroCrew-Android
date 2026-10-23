@@ -18,17 +18,17 @@
             android:layout_height="wrap_content"
             android:background="?attr/colorPrimary">
 
-            <!-- Faint ghosts and stars at the end of the bar, behind the action icons. Cut out
+            <!-- Faint ghosts and stars in the middle of the bar, behind the title. Cut out
                  of their own background, so they sit on any accent colour. -->
             <ImageView
                 android:id="@+id/top_bar_art"
                 android:layout_width="wrap_content"
                 android:layout_height="?attr/actionBarSize"
-                android:layout_gravity="end"
+                android:layout_gravity="center_horizontal"
                 android:adjustViewBounds="true"
                 android:contentDescription="@null"
                 android:importantForAccessibility="no"
-                android:scaleType="fitEnd"
+                android:scaleType="fitCenter"
                 android:src="@drawable/top_bar_art" />
 
             <com.google.android.material.appbar.MaterialToolbar
