@@ -208,7 +208,7 @@ object Notifier {
 
     private fun base(ctx: Context, channel: String) = NotificationCompat.Builder(ctx, channel)
         .setSmallIcon(R.drawable.ic_stat_ghost)
-        .setColor(ContextCompat.getColor(ctx, R.color.kiro_purple))
+        .setColor(ContextCompat.getColor(ctx, R.color.ic_launcher_background))
         .setAutoCancel(true)
         .setPriority(NotificationCompat.PRIORITY_HIGH)
 
