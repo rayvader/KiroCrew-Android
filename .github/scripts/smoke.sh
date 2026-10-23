@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Emulator smoke test: install the APK, add a server through the real UI,
 # load a test page over HTTP and check the page bridge answers.
-set -euo pipefail
+set -Eeuo pipefail
 
 PKG=io.github.rayvader.kirocrew
 APK=$(ls KiroCrew-*.apk | head -1)
@@ -22,6 +22,8 @@ tap() {
 }
 
 adb logcat -c || true
+# Keep the log and what is on screen whenever a step fails, so a failed run explains itself.
+trap 'adb logcat -d > "$OUT/logcat.txt" 2>/dev/null || true; adb logcat -d -b crash > "$OUT/crash.txt" 2>/dev/null || true; adb shell dumpsys activity activities > "$OUT/activities.txt" 2>/dev/null || true' ERR
 # On a fresh emulator Google Play services restarts about half a minute after boot,
 # and Android kills apps that use its font provider with it. Let that pass first.
 sleep 60
