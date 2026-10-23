@@ -95,6 +95,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var menuTabDot: View
     private lateinit var topGhost: View
     private lateinit var topGhostDot: View
+    private var promptOnFocus = false
     private var ghostMenuOpen = false
     private var ghostDragging = false
     private val statusListener: () -> Unit = { showStatus() }
@@ -995,13 +996,30 @@ class MainActivity : AppCompatActivity() {
         lockView.isVisible = true
         if (app.autoPrompt && !app.authInProgress) {
             app.autoPrompt = false
-            promptUnlock()
+            promptWhenFocused()
         }
     }
 
     private fun promptUnlock() {
+        promptOnFocus = false
         app.authInProgress = true
         appLock.show()
+    }
+
+    /**
+     * The automatic prompt waits until the window has focus. Opened in onResume while the
+     * app is still coming to the front, the system drops it at once ("Evicting client" in
+     * logcat) but can leave its PIN box on screen, and the answer typed there goes nowhere.
+     */
+    private fun promptWhenFocused() {
+        if (hasWindowFocus()) promptUnlock() else promptOnFocus = true
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (!hasFocus || !promptOnFocus) return
+        promptOnFocus = false
+        if (lockView.isVisible && !app.authInProgress) promptUnlock()
     }
 
     private fun onUnlocked() {
