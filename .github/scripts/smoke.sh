@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Emulator smoke test: install the APK, add a server through the real UI,
 # load a test page over HTTP and check the page bridge answers.
-set -euo pipefail
+set -Eeuo pipefail
 
 PKG=io.github.rayvader.kirocrew
 APK=$(ls KiroCrew-*.apk | head -1)
