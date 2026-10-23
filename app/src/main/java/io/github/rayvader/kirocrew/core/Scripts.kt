@@ -74,6 +74,22 @@ object Scripts {
             "m.content='width=1280';})();"
 
     /**
+     * Tells the app each time the page title changes. The dashboard renames its
+     * tab after the session or page on every in-app switch, without loading a
+     * new page, and WebView does not always report those changes by itself.
+     */
+    val TITLE_WATCH = """
+        (function(){
+          var A=window.$BRIDGE;
+          if(!A||!A.pageTitle||window.__kcaTitle)return;window.__kcaTitle=1;
+          var last=null;
+          var send=function(){var t=document.title||'';if(t===last)return;last=t;try{A.pageTitle(t);}catch(e){}};
+          new MutationObserver(send).observe(document.head||document.documentElement,{subtree:true,childList:true,characterData:true});
+          send();
+        })();
+    """.trimIndent()
+
+    /**
      * Makes blob:/data: downloads work. WebView cannot hand those URLs to the
      * system downloader, so the page reads the bytes and passes them to the app.
      */

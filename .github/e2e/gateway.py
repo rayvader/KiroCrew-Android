@@ -52,7 +52,11 @@ PAGE = """<!doctype html>
   <a href="https://example.com/">External site</a>
 </p>
 <script>
-  function show() { document.getElementById('path').textContent = 'Path: ' + location.pathname; }
+  // Like the dashboard: each in-app page switch renames the tab a moment later, with no page load.
+  function show() {
+    document.getElementById('path').textContent = 'Path: ' + location.pathname;
+    setTimeout(function () { document.title = 'Test ' + location.pathname.slice(1) + ' page'; }, 50);
+  }
   show();
   window.addEventListener('popstate', show);
   var A = window.KiroCrewAndroid;

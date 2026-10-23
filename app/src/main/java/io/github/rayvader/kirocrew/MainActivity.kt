@@ -502,6 +502,7 @@ class MainActivity : AppCompatActivity() {
     private fun injectPageScripts() {
         webView.evaluateJavascript(Scripts.customCss(prefs.customCss), null)
         webView.evaluateJavascript(Scripts.DOWNLOAD_HOOKS, null)
+        webView.evaluateJavascript(Scripts.TITLE_WATCH, null)
         // Normally already installed at document start; this covers WebViews without that feature.
         webView.evaluateJavascript(Scripts.NOTIFY_SHIM, null)
         if (prefs.desktopMode) webView.evaluateJavascript(Scripts.DESKTOP_VIEWPORT, null)
@@ -1277,6 +1278,13 @@ class MainActivity : AppCompatActivity() {
 
         @JavascriptInterface
         fun appVersion(): String = BuildConfig.VERSION_NAME
+
+        /** The page's title, each time it changes: the dashboard names the session or page there. */
+        @JavascriptInterface
+        fun pageTitle(title: String?) {
+            if (!currentPageIsTrusted()) return
+            runOnUiThread { supportActionBar?.subtitle = title }
+        }
 
         /** Read by the Notification stand-in so `Notification.permission` is always current. */
         @JavascriptInterface
