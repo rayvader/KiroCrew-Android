@@ -95,6 +95,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var menuFab: View
     private lateinit var menuTabDot: View
     private lateinit var topGhost: View
+    private lateinit var topBarArt: View
     private lateinit var topGhostDot: View
     private var promptOnFocus = false
     private var ghostMenuOpen = false
@@ -240,6 +241,7 @@ class MainActivity : AppCompatActivity() {
         (menuFab.parent as View).addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> placeGhost() }
         menuTabDot = findViewById(R.id.menu_tab_dot)
         topGhost = findViewById(R.id.top_ghost)
+        topBarArt = findViewById(R.id.top_bar_art)
         topGhostDot = findViewById(R.id.top_ghost_dot)
         messageView = findViewById(R.id.message)
         messageTitle = findViewById(R.id.message_title)
@@ -463,6 +465,7 @@ class MainActivity : AppCompatActivity() {
 
         toolbar.isVisible = prefs.showToolbar
         topGhost.isVisible = prefs.showToolbar
+        topBarArt.isVisible = prefs.showToolbar
         menuFab.isVisible = !prefs.showToolbar
         placeGhost()
         rebuildBottomNav()
