@@ -337,9 +337,13 @@ f_fast_nav() {
   tap_now "Schedule"
   page_path /schedule
   check "bottom bar Schedule opens /schedule"
+  wait_text "Test schedule page" 10
+  check "the top bar shows the new page's title"
   tap_now "Alerts"
   page_path /notifications
   check "bottom bar Alerts opens /notifications"
+  wait_text "Test notifications page" 10
+  check "the top bar title follows each page switch"
   tap_now "Chat"
   page_path /chat
   [[ -z $(gw_since "$GW" "$mark" GET page) ]] || fail "bottom bar reloaded the page from the server"

@@ -61,6 +61,9 @@ class CodecsTest {
         assertTrue(css.contains("\"body{color:red}\\n/* \\\"x\\\" */\""))
         assertTrue(Scripts.spaNavigate("http://h/chat").contains("\"http://h/chat\""))
         assertTrue(Scripts.DOWNLOAD_HOOKS.contains("KiroCrewAndroid.saveDataUrl"))
+        assertTrue(Scripts.TITLE_WATCH.contains("KiroCrewAndroid"))
+        assertTrue(Scripts.TITLE_WATCH.contains("pageTitle"))
+        assertTrue(Scripts.TITLE_WATCH.contains("MutationObserver"))
     }
 
     @Test
