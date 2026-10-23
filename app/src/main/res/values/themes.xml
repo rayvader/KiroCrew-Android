@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="kiro_purple">#7B3FE4</color>
-    <color name="ic_launcher_background">#4B1FA8</color>
+    <color name="ic_launcher_background">#9046FF</color>
 
     <style name="Theme.KiroCrew" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="colorPrimary">@color/kiro_purple</item>
