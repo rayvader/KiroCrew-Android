@@ -50,6 +50,7 @@ PAGE = """<!doctype html>
 <p>
   <a href="/logs">Go to logs</a>
   <a href="https://example.com/">External site</a>
+  <button id="switch" onclick="switchSession()">Switch session</button>
 </p>
 <script>
   // Like the dashboard: each in-app page switch renames the tab a moment later, with no page load.
@@ -73,6 +74,14 @@ PAGE = """<!doctype html>
     var text = 'Background: ' + getComputedStyle(document.body).backgroundColor;
     if (el.textContent !== text) el.textContent = text;
   }, 500);
+  // Like picking another session in the dashboard: the page changes its own URL, then
+  // renames itself, then the unread count in front of the name changes on its own.
+  function switchSession() {
+    history.pushState({}, '', '/chat?session=b');
+    show();
+    setTimeout(function () { document.title = 'Session B page'; }, 30);
+    setTimeout(function () { document.title = '(3) Session B page'; }, 1500);
+  }
   function saveBlob() {
     var url = URL.createObjectURL(new Blob(['hello from the test gateway\\n'], { type: 'text/plain' }));
     var a = document.createElement('a');
