@@ -348,6 +348,11 @@ f_fast_nav() {
   page_path /chat
   [[ -z $(gw_since "$GW" "$mark" GET page) ]] || fail "bottom bar reloaded the page from the server"
   check "fast page switching: no full page reload"
+  tap "Switch session"
+  wait_text "Session B page" 10
+  check "picking another session in the page renames the top bar"
+  wait_text "(3) Session B page" 10
+  check "a new unread count in the page title shows in the top bar"
 }
 
 f_deep_link() {

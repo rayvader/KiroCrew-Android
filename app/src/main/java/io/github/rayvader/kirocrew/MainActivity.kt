@@ -80,6 +80,7 @@ import io.github.rayvader.kirocrew.core.Shortcut
 import io.github.rayvader.kirocrew.core.UrlTools
 import org.json.JSONException
 import org.json.JSONObject
+import org.json.JSONTokener
 import java.util.UUID
 
 class MainActivity : AppCompatActivity() {
@@ -100,6 +101,16 @@ class MainActivity : AppCompatActivity() {
     private var ghostDragging = false
     private val statusListener: () -> Unit = { showStatus() }
     private val statusHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private var shownPageTitle: String? = null
+
+    /** Reads the page title every second while the app is open: see [readPageTitle]. */
+    private val titleTick = object : Runnable {
+        override fun run() {
+            readPageTitle()
+            statusHandler.postDelayed(this, TITLE_INTERVAL_MS)
+        }
+    }
+
     private val statusTick = object : Runnable {
         override fun run() {
             prefs.profiles.firstOrNull { it.id == loadedProfileId }?.let { GatewayStatus.probe(it) }
@@ -271,6 +282,8 @@ class MainActivity : AppCompatActivity() {
         showStatus()
         statusHandler.removeCallbacks(statusTick)
         statusHandler.post(statusTick)
+        statusHandler.removeCallbacks(titleTick)
+        statusHandler.post(titleTick)
         webView.onResume()
         app.visibleProfileId = loadedProfileId
         AlertScheduler.apply(this)
@@ -285,6 +298,7 @@ class MainActivity : AppCompatActivity() {
     override fun onPause() {
         // The dot only checks while you can see it.
         statusHandler.removeCallbacks(statusTick)
+        statusHandler.removeCallbacks(titleTick)
         GatewayStatus.removeListener(statusListener)
         app.visibleProfileId = null
         if (!webViewGone) webView.onPause()
@@ -708,6 +722,32 @@ class MainActivity : AppCompatActivity() {
         MaterialColors.getColor(toolbar, com.google.android.material.R.attr.colorOnPrimary, Color.WHITE)
 
     /** Repaints both dots: the Servers icon and the edge tab. */
+    /**
+     * The top bar's second line is the page title. The dashboard renames its page on every
+     * session switch without loading a new page, and the events that report the new title
+     * (WebView's own, and the page watcher) can be missed or arrive out of order, leaving an
+     * older session's name. Reading document.title directly puts it right within a second.
+     */
+    private fun readPageTitle() {
+        if (webViewGone || !toolbar.isVisible) return
+        webView.evaluateJavascript("document.title") { result ->
+            // The result is the title as a JSON string, or "null".
+            val title = try {
+                JSONTokener(result ?: "null").nextValue() as? String
+            } catch (e: JSONException) {
+                null
+            }
+            showPageTitle(title)
+        }
+    }
+
+    private fun showPageTitle(title: String?) {
+        val text = title?.trim().orEmpty()
+        if (text.isEmpty() || text == shownPageTitle) return
+        shownPageTitle = text
+        supportActionBar?.subtitle = text
+    }
+
     private fun showStatus() {
         if (isFinishing || isDestroyed) return
         invalidateOptionsMenu()
@@ -1190,7 +1230,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         override fun onReceivedTitle(view: WebView, title: String?) {
-            supportActionBar?.subtitle = title
+            showPageTitle(title)
         }
 
         override fun onShowFileChooser(
@@ -1283,7 +1323,7 @@ class MainActivity : AppCompatActivity() {
         @JavascriptInterface
         fun pageTitle(title: String?) {
             if (!currentPageIsTrusted()) return
-            runOnUiThread { supportActionBar?.subtitle = title }
+            runOnUiThread { showPageTitle(title) }
         }
 
         /** Read by the Notification stand-in so `Notification.permission` is always current. */
@@ -1307,5 +1347,6 @@ class MainActivity : AppCompatActivity() {
         private const val TAB_ANIM_MS = 180L
         /** How often the status dot asks the gateway while the app is open. */
         private const val STATUS_INTERVAL_MS = 30_000L
+        private const val TITLE_INTERVAL_MS = 1_000L
     }
 }
