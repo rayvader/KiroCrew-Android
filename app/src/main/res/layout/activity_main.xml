@@ -9,18 +9,33 @@
         android:layout_height="match_parent"
         android:orientation="vertical">
 
-        <!-- The Kiro ghost on a white circle sits over the start of the top bar; the bar's
+        <!-- The top bar's colour is on this frame, so the art can sit behind the transparent
+             toolbar. The Kiro ghost on a white circle sits over the start of the top bar; the bar's
              start inset keeps its title clear of it. The dot shows whether the gateway can
              be reached, in the same colours as on the Servers icon. -->
         <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+            android:layout_height="wrap_content"
+            android:background="?attr/colorPrimary">
+
+            <!-- Faint ghosts and stars at the end of the bar, behind the action icons. Cut out
+                 of their own background, so they sit on any accent colour. -->
+            <ImageView
+                android:id="@+id/top_bar_art"
+                android:layout_width="wrap_content"
+                android:layout_height="?attr/actionBarSize"
+                android:layout_gravity="end"
+                android:adjustViewBounds="true"
+                android:contentDescription="@null"
+                android:importantForAccessibility="no"
+                android:scaleType="fitEnd"
+                android:src="@drawable/top_bar_art" />
 
             <com.google.android.material.appbar.MaterialToolbar
                 android:id="@+id/toolbar"
                 android:layout_width="match_parent"
                 android:layout_height="?attr/actionBarSize"
-                android:background="?attr/colorPrimary"
+                android:background="@android:color/transparent"
                 android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
                 app:contentInsetStart="64dp"
                 app:popupTheme="@style/ThemeOverlay.AppCompat.DayNight"
