@@ -871,7 +871,7 @@ f_update_check() {
   tap "Check now"
   sleep 4
   app_running || fail "update check crashed the app"
-  has_text "Kiro Crew for Android 1.0." || fail "version row missing"
+  has_text "Version 1.0." || fail "version row missing"
   check "Settings shows the app version"
   video_only "the result is a short toast ('You have the newest version'), see the video"
 }
@@ -887,7 +887,7 @@ f_about() {
   ! has_text "MADE BY" || fail "the old credit text is still on the About screen"
   check "About only shows the version"
   back
-  wait_text "About" 10
+  wait_text "Settings" 10
   ! has_text "Credits" || fail "the old Credits row is still in Settings"
   ! has_text "Source code" || fail "the GitHub source row is still in Settings"
   ! has_text "github.com/rayvader" || fail "the GitHub link is still in Settings"
