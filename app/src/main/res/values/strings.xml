@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Kiro Crew</string>
-    <string name="source_url">https://github.com/rayvader/KiroCrew-Android</string>
 
     <!-- Navigation -->
     <string name="nav_chat">Chat</string>
@@ -213,5 +212,8 @@ The app saves the server and signs you in.<br><br>
     <string name="cat_about">About</string>
     <string name="about">Version</string>
     <string name="about_summary">Kiro Crew for Android %1$s</string>
-    <string name="source">Source code</string>
+    <string name="credits">Credits</string>
+    <string name="credits_summary">Who made this app</string>
+    <string name="credits_made_by">made by</string>
+    <string name="credits_nickname" translatable="false">rayvader</string>
 </resources>

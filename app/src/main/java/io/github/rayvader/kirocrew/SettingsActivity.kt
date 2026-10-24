@@ -4,7 +4,6 @@ import android.Manifest
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.text.InputType
@@ -165,12 +164,8 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
         findPreference<Preference>("about")?.summary =
             getString(R.string.about_summary, BuildConfig.VERSION_NAME)
 
-        findPreference<Preference>("source")?.setOnPreferenceClickListener {
-            try {
-                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(getString(R.string.source_url))))
-            } catch (e: Exception) {
-                Toast.makeText(ctx, R.string.no_app, Toast.LENGTH_SHORT).show()
-            }
+        findPreference<Preference>("credits")?.setOnPreferenceClickListener {
+            startActivity(Intent(ctx, CreditsActivity::class.java))
             true
         }
     }

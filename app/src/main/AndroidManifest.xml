@@ -57,6 +57,12 @@
             android:parentActivityName=".MainActivity" />
 
         <activity
+            android:name=".CreditsActivity"
+            android:exported="false"
+            android:label="@string/credits"
+            android:parentActivityName=".SettingsActivity" />
+
+        <activity
             android:name=".ProfilesActivity"
             android:exported="false"
             android:label="@string/servers"
