@@ -221,7 +221,7 @@
         <Preference
             app:iconSpaceReserved="false"
             app:key="about"
-            app:selectable="false"
+            app:summary="@string/about_version"
             app:title="@string/about" />
         <SwitchPreferenceCompat
             app:defaultValue="true"
@@ -234,10 +234,5 @@
             app:key="check_updates"
             app:summary="@string/check_updates_summary"
             app:title="@string/check_updates" />
-        <Preference
-            app:iconSpaceReserved="false"
-            app:key="credits"
-            app:summary="@string/credits_summary"
-            app:title="@string/credits" />
     </PreferenceCategory>
 </PreferenceScreen>

@@ -876,24 +876,25 @@ f_update_check() {
   video_only "the result is a short toast ('You have the newest version'), see the video"
 }
 
-f_credits() {
+f_about() {
   launch
   open_settings
-  # `tap` scrolls down to the About rows, so the old GitHub row would be on screen too.
-  tap "Credits"
-  wait_text "rayvader" 10
-  app_running || fail "the Credits screen crashed the app"
-  check "Settings > About > Credits opens and shows the nickname"
-  has_text "Kiro Crew for Android 1.0." || fail "Credits does not show the app version"
-  check "Credits shows the app name and version"
+  tap "About"
+  wait_text "Version 1.0." 10
+  app_running || fail "the About screen crashed the app"
+  check "Settings > About opens and shows the version"
+  ! has_text "rayvader" || fail "the old nickname is still on the About screen"
+  ! has_text "MADE BY" || fail "the old credit text is still on the About screen"
+  check "About only shows the version"
   back
-  wait_text "Credits" 10
+  wait_text "About" 10
+  ! has_text "Credits" || fail "the old Credits row is still in Settings"
   ! has_text "Source code" || fail "the GitHub source row is still in Settings"
   ! has_text "github.com/rayvader" || fail "the GitHub link is still in Settings"
-  check "the GitHub source link is gone from Settings"
-  tap "Credits"
-  wait_text "rayvader" 10
-  # Ends on Credits for the screenshot. CI turns animations off, so it is a still frame.
+  check "Settings has About instead of Credits or GitHub"
+  tap "About"
+  wait_text "Version 1.0." 10
+  # Ends on About for the screenshot. CI turns animations off, so it is still.
 }
 
 f_gateway_update() {
@@ -1035,7 +1036,7 @@ feature "Links to other sites" f_external_links
 feature "Privacy screen and keep screen on" f_privacy_and_screen
 feature "Theme and accent color" f_theme
 feature "Update check" f_update_check
-feature "Credits" f_credits
+feature "About" f_about
 feature "Kiro Crew update check" f_gateway_update
 feature "Sign out" f_sign_out
 feature "App lock" f_app_lock
