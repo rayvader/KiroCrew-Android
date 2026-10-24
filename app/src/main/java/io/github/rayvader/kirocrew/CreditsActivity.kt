@@ -5,7 +5,7 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.appbar.MaterialToolbar
 
-/** Settings > About > Credits: who made the app, on a moving kaleidoscope. */
+/** Settings > About: the app version on a moving kaleidoscope. */
 class CreditsActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -15,7 +15,7 @@ class CreditsActivity : AppCompatActivity() {
         setSupportActionBar(findViewById<MaterialToolbar>(R.id.toolbar))
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         findViewById<TextView>(R.id.credits_app).text =
-            getString(R.string.about_summary, BuildConfig.VERSION_NAME)
+            getString(R.string.about_version, BuildConfig.VERSION_NAME)
     }
 
     override fun onSupportNavigateUp(): Boolean {

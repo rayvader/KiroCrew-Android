@@ -59,7 +59,7 @@
         <activity
             android:name=".CreditsActivity"
             android:exported="false"
-            android:label="@string/credits"
+            android:label="@string/about"
             android:parentActivityName=".SettingsActivity" />
 
         <activity

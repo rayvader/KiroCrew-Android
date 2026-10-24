@@ -161,12 +161,12 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
             true
         }
 
-        findPreference<Preference>("about")?.summary =
-            getString(R.string.about_summary, BuildConfig.VERSION_NAME)
-
-        findPreference<Preference>("credits")?.setOnPreferenceClickListener {
-            startActivity(Intent(ctx, CreditsActivity::class.java))
-            true
+        findPreference<Preference>("about")?.apply {
+            summary = getString(R.string.about_version, BuildConfig.VERSION_NAME)
+            setOnPreferenceClickListener {
+                startActivity(Intent(ctx, CreditsActivity::class.java))
+                true
+            }
         }
     }
 

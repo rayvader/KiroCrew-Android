@@ -210,10 +210,6 @@ The app saves the server and signs you in.<br><br>
     <string name="sign_out_confirm">Remove the login cookie and site data on this phone?</string>
 
     <string name="cat_about">About</string>
-    <string name="about">Version</string>
-    <string name="about_summary">Kiro Crew for Android %1$s</string>
-    <string name="credits">Credits</string>
-    <string name="credits_summary">Who made this app</string>
-    <string name="credits_made_by">made by</string>
-    <string name="credits_nickname" translatable="false">rayvader</string>
+    <string name="about">About</string>
+    <string name="about_version">Version %1$s</string>
 </resources>
