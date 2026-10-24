@@ -876,6 +876,26 @@ f_update_check() {
   video_only "the result is a short toast ('You have the newest version'), see the video"
 }
 
+f_credits() {
+  launch
+  open_settings
+  # `tap` scrolls down to the About rows, so the old GitHub row would be on screen too.
+  tap "Credits"
+  wait_text "rayvader" 10
+  app_running || fail "the Credits screen crashed the app"
+  check "Settings > About > Credits opens and shows the nickname"
+  has_text "Kiro Crew for Android 1.0." || fail "Credits does not show the app version"
+  check "Credits shows the app name and version"
+  back
+  wait_text "Credits" 10
+  ! has_text "Source code" || fail "the GitHub source row is still in Settings"
+  ! has_text "github.com/rayvader" || fail "the GitHub link is still in Settings"
+  check "the GitHub source link is gone from Settings"
+  tap "Credits"
+  wait_text "rayvader" 10
+  # Ends on Credits for the screenshot. CI turns animations off, so it is a still frame.
+}
+
 f_gateway_update() {
   # A check the gateway could not finish is no answer: nothing is shown.
   curl -s "$GW/test/gw-update?latest=0.13.0&status=failed" >/dev/null
@@ -1015,6 +1035,7 @@ feature "Links to other sites" f_external_links
 feature "Privacy screen and keep screen on" f_privacy_and_screen
 feature "Theme and accent color" f_theme
 feature "Update check" f_update_check
+feature "Credits" f_credits
 feature "Kiro Crew update check" f_gateway_update
 feature "Sign out" f_sign_out
 feature "App lock" f_app_lock

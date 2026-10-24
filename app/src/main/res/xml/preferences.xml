@@ -236,8 +236,8 @@
             app:title="@string/check_updates" />
         <Preference
             app:iconSpaceReserved="false"
-            app:key="source"
-            app:summary="@string/source_url"
-            app:title="@string/source" />
+            app:key="credits"
+            app:summary="@string/credits_summary"
+            app:title="@string/credits" />
     </PreferenceCategory>
 </PreferenceScreen>
