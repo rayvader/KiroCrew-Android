@@ -892,6 +892,8 @@ f_about() {
   ! has_text "Source code" || fail "the GitHub source row is still in Settings"
   ! has_text "github.com/rayvader" || fail "the GitHub link is still in Settings"
   check "Settings has About instead of Credits or GitHub"
+  launch
+  open_settings
   tap "About"
   wait_text "Version 1.0." 10
   # Ends on About for the screenshot. CI turns animations off, so it is still.
