@@ -36,6 +36,13 @@
             android:paddingHorizontal="32dp"
             android:paddingVertical="28dp">
 
+            <ImageView
+                android:layout_width="140dp"
+                android:layout_height="140dp"
+                android:layout_marginBottom="12dp"
+                android:importantForAccessibility="no"
+                android:src="@drawable/ic_ghost" />
+
             <TextView
                 android:id="@+id/credits_app"
                 android:layout_width="wrap_content"

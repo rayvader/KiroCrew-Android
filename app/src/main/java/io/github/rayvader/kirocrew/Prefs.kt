@@ -7,6 +7,7 @@ import androidx.preference.PreferenceManager
 import io.github.rayvader.kirocrew.core.GhostPlacement
 import io.github.rayvader.kirocrew.core.Profile
 import io.github.rayvader.kirocrew.core.ProfileCodec
+import io.github.rayvader.kirocrew.core.Versions
 import io.github.rayvader.kirocrew.core.Shortcut
 
 /** Every user setting in one place. Keys match res/xml/preferences.xml. */
@@ -122,6 +123,28 @@ class Prefs(context: Context) {
         sp.getString(K_SNOOZED_UPDATE, null) == version &&
             System.currentTimeMillis() - sp.getLong(K_SNOOZED_AT, 0L) < SNOOZE_MS
 
+    /** Remember the "What's new" lines of the release being installed, to show once it is running. */
+    fun savePendingChangelog(version: String, notes: List<String>) = sp.edit {
+        putString(K_CHANGELOG_VERSION, version)
+        putString(K_CHANGELOG_NOTES, notes.joinToString("\n"))
+    }
+
+    /** The saved notes if this app is that release, else null. Either way a done or stale note is dropped. */
+    fun takePendingChangelog(installed: String): List<String>? {
+        val version = sp.getString(K_CHANGELOG_VERSION, null) ?: return null
+        val notes = sp.getString(K_CHANGELOG_NOTES, "").orEmpty().lines().filter { it.isNotBlank() }
+        val installedNow = Versions.parse(installed)
+        val target = Versions.parse(version)
+        if (installedNow == null || target == null) return null
+        // Not there yet (the install may still be waiting): keep the note.
+        if (Versions.isNewer(version, installed)) return null
+        sp.edit {
+            remove(K_CHANGELOG_VERSION)
+            remove(K_CHANGELOG_NOTES)
+        }
+        return notes.takeIf { installedNow == target && it.isNotEmpty() }
+    }
+
     val bottomShortcuts: List<Shortcut>
         get() {
             val keys = sp.getStringSet("bottom_shortcuts", null) ?: return Shortcut.DEFAULT_BAR
@@ -149,6 +172,8 @@ class Prefs(context: Context) {
         private const val K_NOTIFIED_GATEWAY = "notified_gateway_update_"
         private const val K_NOTIFIED_UPDATE = "notified_update"
         private const val K_SNOOZED_UPDATE = "snoozed_update"
+        private const val K_CHANGELOG_VERSION = "changelog_version"
+        private const val K_CHANGELOG_NOTES = "changelog_notes"
         private const val K_SNOOZED_AT = "snoozed_update_at"
         private const val SNOOZE_MS = 24L * 60 * 60 * 1000
     }
