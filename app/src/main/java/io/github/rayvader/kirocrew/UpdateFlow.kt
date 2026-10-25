@@ -87,6 +87,17 @@ class UpdateFlow(private val activity: AppCompatActivity) {
         }
     }
 
+    /** Call from the main screen's onResume: after an update, show what changed, once. */
+    fun showChangelogIfUpdated() {
+        val notes = prefs.takePendingChangelog(BuildConfig.VERSION_NAME) ?: return
+        if (!alive()) return
+        MaterialAlertDialogBuilder(activity)
+            .setTitle(activity.getString(R.string.update_done_title, BuildConfig.VERSION_NAME))
+            .setMessage(notes.joinToString("\n") { "• $it" })
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
+    }
+
     private fun canInstall(): Boolean = activity.packageManager.canRequestPackageInstalls()
 
     private fun start(release: Release) {
@@ -110,6 +121,7 @@ class UpdateFlow(private val activity: AppCompatActivity) {
     private fun download(release: Release) {
         if (downloading) return
         downloading = true
+        prefs.savePendingChangelog(release.version, release.notes)
         val cancelled = AtomicBoolean(false)
         val bar = LinearProgressIndicator(activity).apply { isIndeterminate = true }
         val pad = (24 * activity.resources.displayMetrics.density).toInt()

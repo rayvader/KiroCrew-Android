@@ -292,6 +292,7 @@ class MainActivity : AppCompatActivity() {
         UpdateScheduler.apply(this)
         updates.onResume()
         if (!lockView.isVisible) {
+            updates.showChangelogIfUpdated()
             updates.autoCheck()
             GatewayUpdates.autoCheck(this)
         }

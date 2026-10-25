@@ -160,6 +160,7 @@ The app saves the server and signs you in.<br><br>
     <string name="release_notes">What\'s new</string>
     <string name="update_allow_installs">Allow Kiro Crew to install apps, then come back</string>
     <string name="update_downloading">Downloading %1$s</string>
+    <string name="update_done_title">Updated to %1$s</string>
     <string name="update_failed">Update failed: %1$s</string>
     <string name="update_ready_title">Kiro Crew %1$s is ready</string>
     <string name="update_ready_body">Tap to update</string>
