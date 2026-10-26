@@ -17,7 +17,7 @@ android {
         minSdk = 26
         targetSdk = 34
         versionCode = buildNumber
-        versionName = "1.0.$buildNumber"
+        versionName = "2.0.$buildNumber"
         // Where the app looks for updates. A fork built on GitHub Actions checks its own releases.
         val updateRepo = System.getenv("GITHUB_REPOSITORY") ?: "rayvader/KiroCrew-Android"
         buildConfigField("String", "UPDATE_REPO", "\"$updateRepo\"")

@@ -871,7 +871,7 @@ f_update_check() {
   tap "Check now"
   sleep 4
   app_running || fail "update check crashed the app"
-  has_text "Version 1.0." || fail "version row missing"
+  has_text "Version 2.0." || fail "version row missing"
   check "Settings shows the app version"
   video_only "the result is a short toast ('You have the newest version'), see the video"
 }
@@ -880,7 +880,7 @@ f_about() {
   launch
   open_settings
   tap "About"
-  wait_text "Version 1.0." 10
+  wait_text "Version 2.0." 10
   app_running || fail "the About screen crashed the app"
   check "Settings > About opens and shows the version"
   ! has_text "rayvader" || fail "the old nickname is still on the About screen"
@@ -895,7 +895,7 @@ f_about() {
   launch
   open_settings
   tap "About"
-  wait_text "Version 1.0." 10
+  wait_text "Version 2.0." 10
   # Ends on About for the screenshot. CI turns animations off, so it is still.
 }
 

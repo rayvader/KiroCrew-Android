@@ -62,7 +62,7 @@ jobs:
       - name: Name the APK
         id: apk
         run: |
-          VERSION="1.0.${{ github.run_number }}"
+          VERSION="2.0.${{ github.run_number }}"
           FILE="KiroCrew-${VERSION}.apk"
           cp app/build/outputs/apk/release/app-release.apk "$FILE"
           echo "file=$FILE" >> "$GITHUB_OUTPUT"
