@@ -51,6 +51,16 @@
                 android:textColor="#FFFFFFFF"
                 android:textSize="24sp"
                 android:textStyle="bold" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/past_changes"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/past_changes"
+                android:textColor="#FFFFFFFF"
+                app:strokeColor="#B3FFFFFF" />
         </LinearLayout>
     </FrameLayout>
 </LinearLayout>

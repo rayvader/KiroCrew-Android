@@ -52,6 +52,25 @@ PAGE = """<!doctype html>
   <a href="https://example.com/">External site</a>
   <button id="switch" onclick="switchSession()">Switch session</button>
 </p>
+<p><textarea data-composer-input id="composer" rows="2" cols="24" placeholder="Message"></textarea></p>
+<p id="shared">Shared: none</p>
+<script>
+  // Like the dashboard's chat box: "mc:prefill-composer" adds text, a file dropped on it is attached.
+  window.addEventListener('mc:prefill-composer', function (e) {
+    var c = document.getElementById('composer'), t = e.detail && e.detail.text;
+    if (!t) return;
+    c.value = c.value ? c.value + '\\n' + t : t;
+    document.getElementById('shared').textContent = 'Shared text: ' + c.value.replace(/\\n/g, ' | ');
+  });
+  document.body.addEventListener('drop', function (e) {
+    if (!e.dataTransfer || !e.dataTransfer.files.length) return;
+    e.preventDefault();
+    var f = e.dataTransfer.files[0];
+    f.text().then(function (t) {
+      document.getElementById('shared').textContent = 'Shared file: ' + f.name + ' ' + t.trim();
+    });
+  });
+</script>
 <script>
   // Like the dashboard: each in-app page switch renames the tab a moment later, with no page load.
   function show() {

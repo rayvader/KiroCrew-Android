@@ -76,6 +76,7 @@ import io.github.rayvader.kirocrew.core.GhostPlacement
 import io.github.rayvader.kirocrew.core.LiveTags
 import io.github.rayvader.kirocrew.core.Profile
 import io.github.rayvader.kirocrew.core.Scripts
+import io.github.rayvader.kirocrew.core.ShareRules
 import io.github.rayvader.kirocrew.core.Shortcut
 import io.github.rayvader.kirocrew.core.UrlTools
 import org.json.JSONException
@@ -103,6 +104,9 @@ class MainActivity : AppCompatActivity() {
     private val statusListener: () -> Unit = { showStatus() }
     private val statusHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private var shownPageTitle: String? = null
+
+    /** What another app shared, until the page has put it in the chat box. Read by the page's thread too. */
+    @Volatile private var pendingShare: SharedItem? = null
 
     /** Reads the page title every second while the app is open: see [readPageTitle]. */
     private val titleTick = object : Runnable {
@@ -228,6 +232,7 @@ class MainActivity : AppCompatActivity() {
             loadInitial(intent)
             if (intent?.getBooleanExtra(EXTRA_SHOW_UPDATE, false) == true) updates.checkNow()
         }
+        if (savedInstanceState == null && ShareInbox.isShare(intent)) acceptShare(intent)
     }
 
     private fun bindViews() {
@@ -325,6 +330,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        if (ShareInbox.isShare(intent)) {
+            acceptShare(intent)
+            return
+        }
         if (intent.getBooleanExtra(EXTRA_SHOW_UPDATE, false)) updates.checkNow()
         val path = pathFromIntent(intent)
         // A notification from another saved server switches to that server.
@@ -377,7 +386,8 @@ class MainActivity : AppCompatActivity() {
         GatewayStatus.probe(profile)
     }
 
-    private fun navigateTo(path: String) {
+    /** [onSamePage] runs when the page switched without a reload (a reload runs onPageFinished instead). */
+    private fun navigateTo(path: String, onSamePage: (() -> Unit)? = null) {
         val base = currentServerBase ?: return
         val target = UrlTools.buildUrl(base, path)
         hideMessage()
@@ -386,8 +396,73 @@ class MainActivity : AppCompatActivity() {
             return
         }
         webView.evaluateJavascript(Scripts.spaNavigate(target)) { result ->
-            if (result != "\"ok\"" && result != "\"same\"") webView.loadUrl(target)
+            if (result != "\"ok\"" && result != "\"same\"") webView.loadUrl(target) else onSamePage?.invoke()
         }
+    }
+
+    // ---- Share to Kiro Crew ------------------------------------------------------------------
+
+    /** Another app shared text or files: copy them, then put them in the chat box. */
+    private fun acceptShare(intent: Intent) {
+        if (prefs.activeProfile == null) {
+            toast(getString(R.string.share_no_server))
+            return
+        }
+        val ctx = applicationContext
+        Thread({
+            val result = ShareInbox.read(ctx, intent)
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                when (result) {
+                    is ShareInbox.Result.Ready -> {
+                        pendingShare = result.item
+                        openChatForShare()
+                    }
+                    ShareInbox.Result.Empty -> Unit
+                    ShareInbox.Result.TooBig -> toast(
+                        getString(R.string.share_too_big, ShareRules.MAX_FILES, ShareRules.MAX_BYTES / (1024 * 1024))
+                    )
+                    ShareInbox.Result.Unreadable -> toast(getString(R.string.share_unreadable))
+                }
+            }
+        }, "kirocrew-share").start()
+    }
+
+    /** Stay on a chat page that is open, or go to Chat. Waits while the app is locked. */
+    private fun openChatForShare() {
+        if (pendingShare == null || webViewGone || lockView.isVisible) return
+        val active = prefs.activeProfile ?: return
+        if (active.id != loadedProfileId) {
+            loadProfile(active, Shortcut.CHAT.path) // onPageFinished delivers it.
+            return
+        }
+        if (onChatPage()) deliverShare() else navigateTo(Shortcut.CHAT.path) { deliverShare() }
+    }
+
+    private fun onChatPage(): Boolean =
+        currentPageIsTrusted() && !mainFrameError &&
+            Uri.parse(currentPageUrl ?: "").path.orEmpty().startsWith(Shortcut.CHAT.matchPrefix)
+
+    /** Only on a chat page: a page that is about to be replaced would take the share with it. */
+    private fun deliverShare() {
+        val item = pendingShare ?: return
+        if (lockView.isVisible || !onChatPage() || item.claimed.get()) return
+        webView.evaluateJavascript(Scripts.shareIntoChat(item.token, item.text, item.files.size), null)
+    }
+
+    private fun shareFinished(item: SharedItem, result: String) {
+        if (pendingShare !== item) return
+        pendingShare = null
+        ShareInbox.clear(applicationContext)
+        toast(
+            getString(
+                when (result) {
+                    "ok" -> R.string.share_added
+                    "nofiles" -> if (item.text.isEmpty()) R.string.share_files_none else R.string.share_files_failed
+                    else -> R.string.share_no_chat
+                }
+            )
+        )
     }
 
     private fun processPendingActions() {
@@ -1071,6 +1146,7 @@ class MainActivity : AppCompatActivity() {
         app.unlocked()
         lockView.isVisible = false
         updates.autoCheck()
+        openChatForShare()
     }
 
     private fun onUnlockFailed() {
@@ -1197,6 +1273,7 @@ class MainActivity : AppCompatActivity() {
             if (currentPageIsTrusted()) {
                 injectPageScripts()
                 if (!mainFrameError) maybeAskNotifyPermission()
+                deliverShare()
             }
             syncNavSelection(url)
             CookieManager.getInstance().flush()
@@ -1333,6 +1410,41 @@ class MainActivity : AppCompatActivity() {
         /** Read by the Notification stand-in so `Notification.permission` is always current. */
         @JavascriptInterface
         fun notificationPermission(): String = notifyPermissionState()
+
+        // Share to Kiro Crew: only the page of the active server, only with the share's token.
+
+        private fun share(token: String?): SharedItem? =
+            pendingShare?.takeIf { token != null && it.token == token && currentPageIsTrusted() }
+
+        /** True once per share, so a reload never puts it in twice. */
+        @JavascriptInterface
+        fun shareClaim(token: String?): Boolean = share(token)?.claimed?.compareAndSet(false, true) == true
+
+        @JavascriptInterface
+        fun shareFiles(token: String?): String {
+            val item = share(token) ?: return "[]"
+            val list = org.json.JSONArray()
+            item.files.forEach {
+                list.put(JSONObject().put("name", it.name).put("type", it.type).put("size", it.size))
+            }
+            return list.toString()
+        }
+
+        @JavascriptInterface
+        fun shareChunk(token: String?, index: Int, offset: Double): String {
+            val file = share(token)?.files?.getOrNull(index) ?: return ""
+            return try {
+                ShareInbox.chunk(file, offset.toLong())
+            } catch (e: java.io.IOException) {
+                ""
+            }
+        }
+
+        @JavascriptInterface
+        fun shareDone(token: String?, result: String?) {
+            val item = share(token) ?: return
+            runOnUiThread { shareFinished(item, result.orEmpty()) }
+        }
     }
 
     companion object {
