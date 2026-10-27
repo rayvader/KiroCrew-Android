@@ -48,6 +48,17 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="kirocrew" />
             </intent-filter>
+            <!-- Share to Kiro Crew: text, links and files from other apps go into the chat box. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
         </activity>
 
         <activity

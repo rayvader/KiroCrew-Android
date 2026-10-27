@@ -161,6 +161,19 @@ The app saves the server and signs you in.<br><br>
     <string name="update_allow_installs">Allow Kiro Crew to install apps, then come back</string>
     <string name="update_downloading">Downloading %1$s</string>
     <string name="update_done_title">Updated to %1$s</string>
+    <string name="past_changes">Past changes</string>
+    <string name="past_changes_title">What changed</string>
+    <string name="past_changes_loading">Loading…</string>
+    <string name="past_changes_none">No changes are listed yet.</string>
+    <string name="past_changes_failed">Could not load the changes (%1$s). Try again later.</string>
+
+    <string name="share_no_server">Add a server first, then share again</string>
+    <string name="share_too_big">Too much to share. Up to %1$d files and %2$d MB.</string>
+    <string name="share_unreadable">Could not read what was shared</string>
+    <string name="share_added">Added to the chat box. Check it, then send.</string>
+    <string name="share_files_failed">The text is in the chat box. The files could not be added.</string>
+    <string name="share_files_none">Could not add the files to the chat box</string>
+    <string name="share_no_chat">Could not find the chat box. Open a chat, then share again.</string>
     <string name="update_failed">Update failed: %1$s</string>
     <string name="update_ready_title">Kiro Crew %1$s is ready</string>
     <string name="update_ready_body">Tap to update</string>

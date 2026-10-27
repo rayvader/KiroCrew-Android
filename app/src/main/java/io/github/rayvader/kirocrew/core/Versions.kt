@@ -1,5 +1,6 @@
 package io.github.rayvader.kirocrew.core
 
+import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 
@@ -57,6 +58,40 @@ object ReleaseNotes {
             if (plain.isNotEmpty()) items.add(if (plain.length > MAX_LINE) plain.take(MAX_LINE - 1) + "…" else plain)
         }
         return items
+    }
+}
+
+/** A past release and its "What's new" lines. */
+data class PastRelease(val version: String, val notes: List<String>)
+
+/** Reads GitHub's list of releases into past changelogs, newest first. */
+object ReleaseHistory {
+    const val MAX = 20
+
+    fun parse(json: String): List<PastRelease> = try {
+        parse(JSONArray(json))
+    } catch (e: JSONException) {
+        emptyList()
+    }
+
+    private fun parse(list: JSONArray): List<PastRelease> {
+        val out = mutableListOf<PastRelease>()
+        for (i in 0 until list.length()) {
+            val o = list.optJSONObject(i) ?: continue
+            // Branch builds are pre-releases: they are not versions people got.
+            if (o.optBoolean("draft", false) || o.optBoolean("prerelease", false)) continue
+            val version = o.text("tag_name")?.trim()?.removePrefix("v") ?: continue
+            if (Versions.parse(version) == null) continue
+            val notes = ReleaseNotes.whatsNew(o.text("body"))
+            if (notes.isNotEmpty()) out.add(PastRelease(version, notes))
+        }
+        return out.sortedWith { a, b ->
+            when {
+                Versions.isNewer(a.version, b.version) -> -1
+                Versions.isNewer(b.version, a.version) -> 1
+                else -> 0
+            }
+        }.take(MAX)
     }
 }
 

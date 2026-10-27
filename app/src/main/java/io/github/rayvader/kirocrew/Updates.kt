@@ -15,7 +15,9 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.Worker
 import androidx.work.WorkerParameters
+import io.github.rayvader.kirocrew.core.PastRelease
 import io.github.rayvader.kirocrew.core.Release
+import io.github.rayvader.kirocrew.core.ReleaseHistory
 import io.github.rayvader.kirocrew.core.ReleaseParser
 import io.github.rayvader.kirocrew.core.Versions
 import java.io.File
@@ -62,6 +64,35 @@ object UpdateChecker {
         }
     } catch (e: IOException) {
         Check.Failed(e.javaClass.simpleName)
+    }
+}
+
+/** Asks GitHub for the past releases of this app, for Settings > About > Past changes. */
+object ReleaseHistoryFetcher {
+    sealed interface Result {
+        data class Ok(val releases: List<PastRelease>) : Result
+        data class Failed(val reason: String) : Result
+    }
+
+    fun fetch(): Result = try {
+        // Branch builds are pre-releases too, so ask for many to find the real ones.
+        val conn = URL("https://api.github.com/repos/${BuildConfig.UPDATE_REPO}/releases?per_page=100")
+            .openConnection() as HttpURLConnection
+        try {
+            conn.connectTimeout = 15_000
+            conn.readTimeout = 20_000
+            conn.setRequestProperty("Accept", "application/vnd.github+json")
+            conn.setRequestProperty("X-GitHub-Api-Version", "2022-11-28")
+            conn.setRequestProperty("User-Agent", "KiroCrewAndroid/${BuildConfig.VERSION_NAME}")
+            when (val code = conn.responseCode) {
+                200 -> Result.Ok(ReleaseHistory.parse(conn.inputStream.use { it.readBytes().toString(Charsets.UTF_8) }))
+                else -> Result.Failed("HTTP $code")
+            }
+        } finally {
+            conn.disconnect()
+        }
+    } catch (e: IOException) {
+        Result.Failed(e.javaClass.simpleName)
     }
 }
 

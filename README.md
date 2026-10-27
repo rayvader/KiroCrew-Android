@@ -112,11 +112,12 @@ Open **Settings** from the app menu.
 | Behavior | Pull to refresh, keep screen on, desktop mode, open other sites in browser, double back to exit, custom CSS, user-agent suffix |
 | Security | App lock (fingerprint, face or screen lock) with timeout. Privacy screen (no screenshots, hidden in recents). |
 | Data | Clear cache. Sign out (cookies and site data). |
-| About | Version. Check for updates on or off. Check now. |
+| About | Version. Past changes (what changed in each version, read from GitHub when you tap it). Check for updates on or off. Check now. |
 
 ## Deep links and shortcuts
 
 - Long-press the app icon for shortcuts to your bottom-bar pages.
+- Share to Kiro Crew from any app: text, links and files (up to 10 files, 25 MB) go into the chat box. Nothing is sent until you tap send.
 - `kirocrew://open?path=/schedule` opens a page directly.
 
 ## Troubleshooting
@@ -141,6 +142,7 @@ Open **Settings** from the app menu.
 - The page can call one small bridge (`window.KiroCrewAndroid`) to save downloads. It only answers pages from your active server.
 - Page notifications use a separate channel (`KiroCrewNotify`). WebView gives it only to the main page of your saved servers, so other sites and sandboxed frames cannot post notifications.
 - Background alerts talk only to your own gateway, with the login cookie the app already holds.
+- Shared files are read only from other apps' `content://` links, never `file://` links or the app's own files. Only your active server's page can read them, once.
 - Updates come only from `https://github.com/` over HTTPS. The app checks the SHA-256 that GitHub publishes, and Android checks the signing key. The update check sends GitHub your IP address. Turn it off in Settings → About if you do not want that.
 - App lock and privacy screen are optional, under Settings → Security.
 

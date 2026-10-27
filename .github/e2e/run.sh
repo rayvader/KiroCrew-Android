@@ -807,6 +807,28 @@ f_downloads() {
   check "downloads carry the login cookie"
 }
 
+# Runs after f_downloads: it shares the e2e-blob.txt that feature saved to Downloads.
+f_share() {
+  back_to_primary
+  adb shell "am start -W -a android.intent.action.SEND -t text/plain --es android.intent.extra.TEXT 'Hello from share' -n $PKG/.MainActivity" >/dev/null
+  page_path /chat
+  check "sharing from another app opens the chat page"
+  wait_text "Shared text: Hello from share" 20
+  check "shared text lands in the chat box"
+  local id
+  id=$(adb shell "content query --uri content://media/external/downloads --projection _id --where \"_display_name='e2e-blob.txt'\"" |
+    sed -n 's/.*_id=\([0-9]*\).*/\1/p' | head -1)
+  [[ -n $id ]] || fail "e2e-blob.txt is not in Downloads (the Downloads feature saves it)"
+  adb shell "am start -W -a android.intent.action.SEND -t text/plain --eu android.intent.extra.STREAM content://media/external/downloads/$id -n $PKG/.MainActivity" >/dev/null
+  wait_text "Shared file: e2e-blob.txt hello from the test gateway" 20
+  check "a shared file is attached in the chat box"
+  adb shell "am start -W -a android.intent.action.SEND -t text/plain --eu android.intent.extra.STREAM file:///data/data/$PKG/shared_prefs/${PKG}_preferences.xml -n $PKG/.MainActivity" >/dev/null
+  sleep 4
+  ! has_text "Shared file: ${PKG}_preferences.xml" || fail "a file:// link to the app's own files was read"
+  app_running || fail "a file:// share crashed the app"
+  check "file:// links are refused, so the app's own files never leave it"
+}
+
 f_external_links() {
   launch
   tap "External site"
@@ -876,16 +898,30 @@ f_update_check() {
   video_only "the result is a short toast ('You have the newest version'), see the video"
 }
 
+# "About" is also the name of its section header, so tap the row by its version line.
+open_about() {
+  local v
+  v=$(adb shell dumpsys package "$PKG" | sed -n 's/.*versionName=\([^ ]*\).*/\1/p' | head -1 | tr -d '\r')
+  tap "Version $v"
+  wait_text "Past changes" 10
+}
+
 f_about() {
   launch
   open_settings
-  tap "About"
-  wait_text "Version 2.0." 10
+  open_about
+  has_text "Version 2.0." || fail "About does not show the version"
   app_running || fail "the About screen crashed the app"
   check "Settings > About opens and shows the version"
   ! has_text "rayvader" || fail "the old nickname is still on the About screen"
   ! has_text "MADE BY" || fail "the old credit text is still on the About screen"
   check "About only shows the version"
+  tap "Past changes"
+  wait_text "What changed" 10 || fail "Past changes did not open"
+  wait_no_text "Loading…" 30 || fail "Past changes kept loading"
+  app_running || fail "Past changes crashed the app"
+  check "About > Past changes lists what changed in past versions"
+  ok_button
   back
   wait_text "Settings" 10
   ! has_text "Credits" || fail "the old Credits row is still in Settings"
@@ -894,8 +930,7 @@ f_about() {
   check "Settings has About instead of Credits or GitHub"
   launch
   open_settings
-  tap "About"
-  wait_text "Version 2.0." 10
+  open_about
   # Ends on About for the screenshot. CI turns animations off, so it is still.
 }
 
@@ -1034,6 +1069,7 @@ feature "Pull to refresh" f_pull_to_refresh
 feature "Desktop mode" f_desktop_mode
 feature "Custom CSS and user agent" f_css_and_agent
 feature "Downloads" f_downloads
+feature "Share to Kiro Crew" f_share
 feature "Links to other sites" f_external_links
 feature "Privacy screen and keep screen on" f_privacy_and_screen
 feature "Theme and accent color" f_theme

@@ -134,4 +134,61 @@ object Scripts {
             "history.pushState({},'',u.href);" +
             "window.dispatchEvent(new PopStateEvent('popstate',{state:history.state}));return 'ok';" +
             "}catch(e){return 'no';}})()"
+
+    /**
+     * Puts what another app shared into the dashboard's chat box. Nothing is sent.
+     * Text goes in through the dashboard's own "mc:prefill-composer" event, or is typed
+     * in when the page does not know that event. Files are read from the app in pieces
+     * (through [BRIDGE]) and dropped on the chat box, like a file dragged onto it.
+     * Waits up to 15 s for the chat box, then reports back with shareDone.
+     */
+    fun shareIntoChat(token: String, text: String, fileCount: Int): String = """
+        (function(){
+          var A=window.$BRIDGE,T=${JsQuote.str(token)},X=${JsQuote.str(text)},N=$fileCount,tries=0;
+          if(!A||!A.shareClaim||!A.shareClaim(T))return;
+          var probe=X.split('\n')[0].slice(0,20);
+          function box(){
+            var all=document.querySelectorAll('[data-composer-input]');
+            for(var i=0;i<all.length;i++){if(all[i].offsetParent!==null)return all[i];}
+            return null;
+          }
+          function val(e){return e.value!=null?String(e.value):(e.textContent||'');}
+          function files(e){
+            if(!N){A.shareDone(T,'ok');return;}
+            try{
+              var meta=JSON.parse(A.shareFiles(T)||'[]'),dt=new DataTransfer();
+              meta.forEach(function(m,i){
+                var parts=[],off=0;
+                while(off<m.size){
+                  var b=A.shareChunk(T,i,off);if(!b)break;
+                  var s=atob(b),u=new Uint8Array(s.length);
+                  for(var j=0;j<s.length;j++)u[j]=s.charCodeAt(j);
+                  parts.push(u);off+=u.length;
+                }
+                dt.items.add(new File(parts,m.name,{type:m.type}));
+              });
+              var ev=new DragEvent('drop',{bubbles:true,cancelable:true,dataTransfer:dt});
+              e.dispatchEvent(ev);
+              A.shareDone(T,ev.defaultPrevented?'ok':'nofiles');
+            }catch(x){A.shareDone(T,'nofiles');}
+          }
+          function step(){
+            var e=box();
+            if(!e){if(++tries<60){setTimeout(step,250);return;}A.shareDone(T,'nochat');return;}
+            if(!X){files(e);return;}
+            var before=val(e);
+            window.dispatchEvent(new CustomEvent('mc:prefill-composer',{detail:{text:X}}));
+            setTimeout(function(){
+              var e2=box()||e;
+              if(val(e2).indexOf(probe)<0){
+                e2.focus();
+                try{document.execCommand('insertText',false,(before?'\n':'')+X);}catch(x){}
+              }
+              if(val(e2).indexOf(probe)<0){A.shareDone(T,'notext');return;}
+              files(e2);
+            },400);
+          }
+          step();
+        })();
+    """.trimIndent()
 }
