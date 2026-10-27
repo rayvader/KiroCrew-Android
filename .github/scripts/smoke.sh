@@ -32,6 +32,16 @@ adb install -r "$APK"
 adb shell pm grant "$PKG" android.permission.POST_NOTIFICATIONS
 adb shell am start -W -n "$PKG/.MainActivity"
 sleep 6
+# Play services can still restart later for one of its own module updates ("Module config
+# changed, forcing restart"), and Android kills the app with it (WebView uses its font
+# provider). Start the app again once, but only when that is why it is gone.
+if ! adb shell pidof "$PKG" >/dev/null &&
+  adb logcat -d | grep -q "Killing .*$PKG.*dying proc com.google.android.gms"; then
+  echo "Play services restarted and took the app with it; starting the app again"
+  sleep 10
+  adb shell am start -W -n "$PKG/.MainActivity"
+  sleep 6
+fi
 adb exec-out screencap -p > "$OUT/1-welcome.png"
 
 tap "Add server"
