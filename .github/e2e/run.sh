@@ -898,11 +898,19 @@ f_update_check() {
   video_only "the result is a short toast ('You have the newest version'), see the video"
 }
 
+# "About" is also the name of its section header, so tap the row by its version line.
+open_about() {
+  local v
+  v=$(adb shell dumpsys package "$PKG" | sed -n 's/.*versionName=\([^ ]*\).*/\1/p' | head -1 | tr -d '\r')
+  tap "Version $v"
+  wait_text "Past changes" 10
+}
+
 f_about() {
   launch
   open_settings
-  tap "About"
-  wait_text "Version 2.0." 10
+  open_about
+  has_text "Version 2.0." || fail "About does not show the version"
   app_running || fail "the About screen crashed the app"
   check "Settings > About opens and shows the version"
   ! has_text "rayvader" || fail "the old nickname is still on the About screen"
@@ -922,8 +930,7 @@ f_about() {
   check "Settings has About instead of Credits or GitHub"
   launch
   open_settings
-  tap "About"
-  wait_text "Version 2.0." 10
+  open_about
   # Ends on About for the screenshot. CI turns animations off, so it is still.
 }
 
