@@ -144,7 +144,8 @@ def sign_in():
     tap("Name", wait=0.6)
     type_text("My crew")
     tap("Dashboard address", wait=0.6)
-    type_text(HOST)
+    # With a port and no scheme the app picks plain http, so say https.
+    type_text("https://" + HOST)
     sh("input", "keyevent", "111")
     tap("Save", wait=3)
     # Signing in is a one-time link: open it in the app, off camera.
