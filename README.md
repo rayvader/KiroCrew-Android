@@ -20,7 +20,11 @@ Your Kiro Crew dashboard on your phone. The full web dashboard runs inside the a
 - [Deep links and shortcuts](#deep-links-and-shortcuts)
 - [Troubleshooting](#troubleshooting)
 - [Security](#security)
+- [Tech stack](#tech-stack)
+- [Project structure](#project-structure)
 - [Build from source](#build-from-source)
+- [Configuration](#configuration)
+- [CI and releases](#ci-and-releases)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -157,21 +161,72 @@ Open **Settings** from the app menu.
 
 Found a problem? See [SECURITY.md](SECURITY.md).
 
+## Tech stack
+
+- Kotlin 1.9, Android Gradle Plugin 8.5, Gradle 8.7 (wrapper), Java 17
+- `minSdk` 26 (Android 8.0), `compileSdk` / `targetSdk` 34
+- AndroidX: AppCompat, Activity, Core, WebKit (the dashboard runs in a `WebView`), Preference (settings screen), SwipeRefreshLayout, Biometric (app lock), WorkManager (background alert and update checks)
+- Material Components for the UI
+- ZXing Android Embedded for QR scanning
+- JUnit 4 (plus `org.json`) for plain-JVM unit tests
+- CI: GitHub Actions, Android 14 emulator via `reactivecircus/android-emulator-runner`, Python scripts for the smoke test, e2e tests and release notes
+
+Single Gradle module (`:app`). No backend of its own: it talks only to your Kiro Crew gateway and, for app updates, to GitHub releases.
+
+## Project structure
+
+| Path | What it holds |
+|---|---|
+| `app/src/main/java/io/github/rayvader/kirocrew/` | Activities and Android glue: `MainActivity` (WebView dashboard, bars, share, downloads), `SettingsActivity`, `ProfilesActivity` (servers), `CreditsActivity` (About), alerts (`AlertService`, `AlertSync`, `AlertsClient`, `Notifier`), updates (`Updates`, `UpdateFlow`, `GatewayUpdates`), `AppLock`, `Prefs`, `Theming`, `ShareInbox` |
+| `app/src/main/java/io/github/rayvader/kirocrew/core/` | Pure Kotlin logic with no Android types: URL handling, profiles, injected page scripts, `data:` codecs, alert parsing, share rules, version compare, auto text size. Unit tested. |
+| `app/src/main/res/` | Layouts, menus, drawables, strings, themes, `xml/preferences.xml` (settings), `xml/network_security_config.xml` |
+| `app/src/test/` | JUnit tests for `core/` |
+| `.github/workflows/android.yml` | Unit tests, release APK, emulator smoke and e2e tests, GitHub release |
+| `.github/workflows/demo.yml` | Manual demo video against a live gateway |
+| `.github/scripts/` | `smoke.sh` (emulator smoke test), `release_notes.py` (release changelog), `find_bounds.py` |
+| `.github/e2e/` | Fake gateway (`gateway.py`), UI driver and per-feature tests (`run.sh`, `ui.py`), report and demo video (`report.py`) |
+| `.github/demo/` | Demo tour run on the emulator |
+| `.github/smoke-site/` | Static test page for the smoke test |
+
 ## Build from source
 
-You need JDK 17 and the Android SDK.
+You need JDK 17 and the Android SDK (platform 34). The Gradle wrapper fetches Gradle itself.
 
 ```bash
-./gradlew testDebugUnitTest assembleRelease
+git clone https://github.com/rayvader/KiroCrew-Android.git
+cd KiroCrew-Android
+./gradlew testDebugUnitTest            # unit tests
+./gradlew assembleDebug                # debug APK
+./gradlew testDebugUnitTest assembleRelease   # what CI runs
 ```
 
-The APK lands in `app/build/outputs/apk/release/`. Without signing secrets it is signed with the debug key.
+Debug APKs land in `app/build/outputs/apk/debug/`, release APKs in `app/build/outputs/apk/release/`. Without a signing key the release APK is signed with the debug key, so it still installs. To install on a connected phone or emulator: `adb install -r app/build/outputs/apk/release/app-release.apk`.
+
+Note that an APK signed with a different key will not install over the release build from GitHub. Uninstall that one first.
+
+## Configuration
+
+The app itself needs no config files: servers and every setting are set in the app. Build-time behavior comes from these environment variables (names only; CI sets them):
+
+| Variable | Effect |
+|---|---|
+| `GITHUB_RUN_NUMBER` | Sets `versionCode` and `versionName` (`2.0.<n>`). Defaults to `1` locally. |
+| `GITHUB_REPOSITORY` | The `owner/repo` whose releases the app checks for updates. Defaults to `rayvader/KiroCrew-Android`. |
+| `SIGNING_STORE_FILE` | Path to a PKCS12 keystore. When set and present, release builds are signed with it. |
+| `SIGNING_STORE_PASSWORD` | Keystore and key password |
+| `SIGNING_KEY_ALIAS` | Key alias. Defaults to `kirocrew`. |
+
+## CI and releases
 
 CI ([workflow](.github/workflows/android.yml)) runs the unit tests, builds the APK, runs a smoke test on an Android 14 emulator, and publishes a GitHub release on every push to `main`. Pushes to `feat/**` and `fix/**` branches publish pre-releases. The smoke test also checks that a page notification reaches Android.
 
 The `e2e` job tests each feature above through the real app on the emulator, against a fake gateway ([`.github/e2e/`](.github/e2e/)). It films each feature, but keeps a clip only when the feature fails, or when it can only be checked by eye (theme colors, the update toast). The run page shows a table of what passed. The `e2e-videos` artifact holds the kept clips and a `demo.mp4` of them. For a clip of every feature, start the workflow by hand (**Actions → Android APK → Run workflow**) with **keep_all_video** ticked.
 
+Releases are tagged `v2.0.<run number>` and carry `KiroCrew-2.0.<run number>.apk`. The release notes come from [`.github/scripts/release_notes.py`](.github/scripts/release_notes.py). Pull requests only build and keep the APK as a workflow artifact.
+
 A fork built by its own CI checks its own releases for updates (`GITHUB_REPOSITORY` is baked in at build time).
+
+The [Demo video](.github/workflows/demo.yml) workflow is manual only. It films the latest release against a live Kiro Crew gateway that the runner reaches over Tailscale, and needs the repository secrets `TS_AUTHKEY` and `DEMO_SIGNIN_URL`.
 
 ### Signing your own builds (forks)
 
