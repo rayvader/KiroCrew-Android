@@ -106,26 +106,41 @@ class UpcomingTest {
     }
 
     @Test
-    fun rowsPerHeight() {
+    fun rowsFillTheHeight() {
         // Raymond's Wide on Smart Launcher is about 139 dp; the emulator's 4x2 is about 223 dp.
-        assertEquals(WidgetFit(4, true), Upcoming.fit(139f, 1f))
-        assertEquals(WidgetFit(3, true), Upcoming.fit(139f, 1.15f))
-        assertEquals(WidgetFit(2, true), Upcoming.fit(110f, 1.15f))
-        assertEquals(WidgetFit(4, true), Upcoming.fit(223f, 1.15f))
-        assertEquals(WidgetFit(4, true), Upcoming.fit(400f, 1f))
-        // 4x1: one row and no header, never zero rows.
-        assertEquals(WidgetFit(1, false), Upcoming.fit(50f, 1f))
+        assertEquals(WidgetFit(4, true), Upcoming.fit(139f, 1f, 4))
+        assertEquals(WidgetFit(3, true, more = 2, moreLine = true), Upcoming.fit(139f, 1f, 5))
+        assertEquals(WidgetFit(2, true, more = 3, moreLine = true), Upcoming.fit(139f, 1.15f, 5))
+        assertEquals(WidgetFit(1, true, more = 4, moreLine = true), Upcoming.fit(110f, 1.15f, 5))
+        assertEquals(WidgetFit(1, true), Upcoming.fit(110f, 1.15f, 1))
+        // Tall enough: every item shows, no "+N more".
+        assertEquals(WidgetFit(5, true), Upcoming.fit(223f, 1f, 5))
+        assertEquals(WidgetFit(5, true), Upcoming.fit(223f, 1.15f, 5))
+        assertEquals(WidgetFit(5, true), Upcoming.fit(300f, 1f, 5))
+        assertEquals(WidgetFit(5, true), Upcoming.fit(300f, 1.15f, 5))
+        assertEquals(WidgetFit(9, true), Upcoming.fit(300f, 1f, 9))
+        // Not more rows than the layout has.
+        assertEquals(WidgetFit(15, true, more = 5, moreLine = true), Upcoming.fit(600f, 1f, 20))
+        assertEquals(WidgetFit(0, true), Upcoming.fit(139f, 1f, 0))
+        // Room for the header and one row only: "+N more" beside the count.
+        assertEquals(WidgetFit(1, true, more = 4), Upcoming.fit(60f, 1f, 5))
+        // 4x1: one row and no header; "+N more" at the row's end.
+        assertEquals(WidgetFit(1, false, more = 4), Upcoming.fit(50f, 1f, 5))
+        assertEquals("+4 more", Upcoming.moreText(4))
     }
 
     @Test
     fun rowsNeverOverflowTheHeight() {
+        val heights = (110..150).map { it.toFloat() } + listOf(223f, 300f, 600f)
         for (scale in listOf(0.85f, 1f, 1.15f, 1.3f)) {
-            for (h in 110..150) {
-                val fit = Upcoming.fit(h.toFloat(), scale)
-                assertTrue("h=$h scale=$scale fit=$fit", Upcoming.used(fit, scale) <= h)
+            for (h in heights) {
+                for (count in 0..20) {
+                    val fit = Upcoming.fit(h, scale, count)
+                    assertTrue("h=$h scale=$scale n=$count fit=$fit", Upcoming.used(fit, scale) <= h)
+                    // Every item is either a row or counted in "+N more".
+                    assertEquals(count, fit.rows + fit.more)
+                }
             }
-            val tall = Upcoming.fit(223f, scale)
-            assertTrue(Upcoming.used(tall, scale) <= 223f)
         }
     }
 
