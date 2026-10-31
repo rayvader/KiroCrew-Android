@@ -8,4 +8,20 @@
         <item name="colorOnPrimary">#FFFFFF</item>
         <item name="colorSecondary">@color/kiro_purple</item>
     </style>
+
+    <!-- The widget's Done prompt: only the dialog and the Undo bar, over the home screen. -->
+    <style name="Theme.KiroCrew.Translucent">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:windowNoTitle">true</item>
+    </style>
+
+    <!-- Froyo widget colors (values-night has the dark set). -->
+    <color name="widget_bg">#F2FFFFFF</color>
+    <color name="widget_text">#1F1A2E</color>
+    <color name="widget_muted">#5F5A6E</color>
+    <color name="widget_chip_bg">#1F7B3FE4</color>
+    <color name="widget_soon">#C25E00</color>
+    <color name="widget_late">#C5221F</color>
 </resources>

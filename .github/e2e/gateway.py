@@ -5,6 +5,9 @@ It speaks the parts of the dashboard API the app relies on:
 - dashboard pages (a tiny single-page app that reports what the app gave it)
 - login cookies, GET /api/notifications, GET /api/stream (SSE), POST /api/auth/refresh
 - a normal file download
+- the crewmate Froyo's thread, dashboard (open items) and POST /api/chat, for the widget
+
+Every Froyo item here is made up for the tests.
 
 Test-only controls live under /test/ (push a note, expire the login, read the
 request log). The emulator reaches this host as 10.0.2.2.
@@ -17,7 +20,7 @@ import queue
 import secrets
 import threading
 import time
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
@@ -136,6 +139,9 @@ class State:
         self.notes = []
         self.listeners = []
         self.log = []
+        # Froyo's open items and the chat messages sent to its thread.
+        self.froyo = froyo_items()
+        self.chats = []
 
     def now_ts(self):
         # Strictly increasing timestamps, so two notes pushed back to back never tie.
@@ -152,6 +158,34 @@ class State:
             self.notes.append(note)
             for q in list(self.listeners):
                 q.put(note)
+
+
+FROYO_SLUG = "froyo-personal-butler"
+FROYO_SLOT = "member-froyo-e2e"
+FROYO_MEMBER = "Froyo E2E"
+
+
+def froyo_items():
+    """Made-up items, dated from today: one late, one today, two later, one with no date."""
+    today = date.today()
+    d = lambda n: (today + timedelta(days=n)).isoformat()
+    return [
+        {"n": 1, "title": "E2E test parcel", "due": d(-1), "kind": "delivery", "flag": None},
+        {"n": 2, "title": "E2E test dinner", "due": d(0), "kind": "booking", "flag": None},
+        {"n": 3, "title": "E2E test flight", "due": d(3) + " 14:10", "kind": "flight", "flag": None},
+        {"n": 4, "title": "E2E test form", "due": d(10), "kind": "deadline", "flag": None},
+        {"n": 5, "title": "E2E test renewal", "due": None, "kind": "bill", "flag": None},
+    ]
+
+
+def froyo_dashboard(items):
+    """Like GET /api/members/{slug}/dashboard: the page's values sit in a JSON data island."""
+    island = json.dumps({"fields": {"open_items": items, "items_as_of": "now"}, "agentic": ["open_items"]})
+    island = island.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
+    html = ('<!doctype html><html><head><title>Froyo</title></head><body>'
+            '<script type="application/json" id="kirocrew-dashboard-data">' + island + '</script>'
+            '<div id="open"></div></body></html>')
+    return json.dumps({"state": "live", "template": "e2e", "rendered_html": html})
 
 
 def make_handler(state):
@@ -257,6 +291,23 @@ def make_handler(state):
                 with state.lock:
                     state.gw_update = {"latest": q.get("latest", ""), "status": q.get("status", "succeeded")}
                 return self.send(200, "ok")
+            if p == "/test/froyo":
+                # mode=reset (the made-up list) or empty (nothing open).
+                with state.lock:
+                    state.froyo = [] if q.get("mode") == "empty" else froyo_items()
+                    state.chats = []
+                return self.send(200, "ok")
+            if p == "/test/chats":
+                with state.lock:
+                    return self.send(200, json.dumps(state.chats), "application/json")
+            if p == f"/api/members/{FROYO_SLUG}/dashboard":
+                if not self.signed_in():
+                    return self.send(401, "{}", "application/json")
+                if q.get("member") != FROYO_MEMBER:
+                    return self.send(400, json.dumps({"code": "missing_member"}), "application/json")
+                with state.lock:
+                    items = list(state.froyo)
+                return self.send(200, froyo_dashboard(items), "application/json")
             if p == "/api/update/check":
                 if not self.signed_in():
                     return self.send(401, "{}", "application/json")
@@ -291,8 +342,31 @@ def make_handler(state):
         def do_POST(self):
             u = urlparse(self.path)
             length = int(self.headers.get("Content-Length") or 0)
-            if length:
-                self.rfile.read(length)
+            raw = self.rfile.read(length) if length else b""
+            if u.path in (f"/api/members/{FROYO_SLUG}/thread", "/api/chat"):
+                # Like the gateway's CSRF check: a POST without the dashboard's Origin is refused.
+                if not (self.headers.get("Origin") or "").startswith("http://10.0.2.2:"):
+                    return self.send(403, "CSRF check failed: request origin not allowed.")
+                if not self.signed_in():
+                    return self.send(401, "{}", "application/json")
+            if u.path == f"/api/members/{FROYO_SLUG}/thread":
+                body = {"slot_key": FROYO_SLOT, "slug": FROYO_SLUG, "member": FROYO_MEMBER}
+                return self.send(200, json.dumps(body), "application/json")
+            if u.path == "/api/chat":
+                try:
+                    msg = json.loads(raw or b"{}")
+                except ValueError:
+                    return self.send(400, "{}", "application/json")
+                text, slot = str(msg.get("message", "")), msg.get("slot")
+                with state.lock:
+                    state.chats.append({"slot": slot, "message": text})
+                    # Like Froyo's ack rules: "Done: <title>" acks it, "Undo done: <title>" brings it back.
+                    if slot == FROYO_SLOT and text.startswith("Done: "):
+                        state.froyo = [i for i in state.froyo if i["title"] != text[6:]]
+                    elif slot == FROYO_SLOT and text.startswith("Undo done: "):
+                        back = [i for i in froyo_items() if i["title"] == text[11:]]
+                        state.froyo = [i for i in state.froyo if i["title"] != text[11:]] + back
+                return self.send(200, "data: [DONE]\n\n", "text/event-stream")
             if u.path == "/api/auth/refresh":
                 if state.refresh_allowed and self.cookies().get("kc_refresh") == "r1":
                     return self.send(200, "{}", "application/json", self.new_session_cookies()[:1])

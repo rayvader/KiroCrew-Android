@@ -295,6 +295,7 @@ class MainActivity : AppCompatActivity() {
         app.visibleProfileId = loadedProfileId
         AlertScheduler.apply(this)
         UpdateScheduler.apply(this)
+        FroyoWidgets.refreshIfShown(this)
         updates.onResume()
         if (!lockView.isVisible) {
             updates.showChangelogIfUpdated()

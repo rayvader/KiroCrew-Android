@@ -15,6 +15,7 @@ Your Kiro Crew dashboard on your phone. The full web dashboard runs inside the a
 - [Connect to your dashboard](#connect-to-your-dashboard)
 - [What works like the browser](#what-works-like-the-browser)
 - [Notifications](#notifications)
+- [Froyo widget](#froyo-widget)
 - [App updates](#app-updates)
 - [Customization](#customization)
 - [Deep links and shortcuts](#deep-links-and-shortcuts)
@@ -86,6 +87,21 @@ Pick how bell notes arrive in **Settings → Notifications → Background alerts
 **Sound and vibration** opens Android's settings for the app. Each kind of alert has its own channel there: Dashboard alerts, Chat updates, App updates and sign-in, Instant alerts connection.
 
 How it works: the app reads `GET /api/notifications` on your gateway with the app's own login cookie. Instant mode also listens to the dashboard's live `/api/stream`. When the login runs out, the app renews it through `/api/auth/refresh`, the same way the dashboard page does. Nothing goes through Google or any other server.
+
+## Froyo widget
+
+A home-screen widget, **Froyo · Upcoming**, lists the open items of the crewmate Froyo (`froyo-personal-butler`): bookings, flights, deliveries and deadlines. Add it from **Settings → Add Froyo widget**, or long-press the home screen and pick it under Widgets.
+
+- The header shows how many items are open. Up to 4 rows show, soonest first: kind icon (📅 booking, ✈ flight, 📦 delivery, ⏰ deadline), due day and time in 24-hour time (the day only when there is no time), and the title.
+- Due within 24 hours is orange. Overdue is red and says **late**.
+- Tap a row to open Froyo's chat in the app.
+- Tap **Done** on a row. The app asks first. Say yes and the row goes, with **Undo** for 5 seconds. Then the app sends `Done: <title>` to Froyo's chat, and Froyo marks it done. Undo after that sends `Undo done: <title>`. With app lock on, Done asks you to unlock first.
+- It refreshes about every 30 minutes, when you open the app, and after a Done. Nothing open shows **Nothing coming up**. When the server cannot be reached, the last list stays, with **as of HH:mm**.
+- Resize it from 4×1 to 4×4. A short widget shows fewer rows rather than squeezing them; the header still counts every item.
+
+How it works: the app reads Froyo's thread with `POST /api/members/froyo-personal-butler/thread` and its open items from `GET /api/members/froyo-personal-butler/dashboard` (the `open_items` field of Froyo's dashboard), with the app's own login cookie. Done is a chat message sent with `POST /api/chat`, the same call the dashboard's chat box makes.
+
+The widget shows item titles on the home screen, also while app lock is on.
 
 ## App updates
 
@@ -178,7 +194,7 @@ Single Gradle module (`:app`). No backend of its own: it talks only to your Kiro
 
 | Path | What it holds |
 |---|---|
-| `app/src/main/java/io/github/rayvader/kirocrew/` | Activities and Android glue: `MainActivity` (WebView dashboard, bars, share, downloads), `SettingsActivity`, `ProfilesActivity` (servers), `CreditsActivity` (About), alerts (`AlertService`, `AlertSync`, `AlertsClient`, `Notifier`), updates (`Updates`, `UpdateFlow`, `ApkDownloads`, `GatewayUpdates`), `AppLock`, `Prefs`, `Theming`, `ShareInbox` |
+| `app/src/main/java/io/github/rayvader/kirocrew/` | Activities and Android glue: `MainActivity` (WebView dashboard, bars, share, downloads), `SettingsActivity`, `ProfilesActivity` (servers), `CreditsActivity` (About), alerts (`AlertService`, `AlertSync`, `AlertsClient`, `Notifier`), updates (`Updates`, `UpdateFlow`, `ApkDownloads`, `GatewayUpdates`), Froyo widget (`FroyoWidget`, `FroyoDoneActivity`), `AppLock`, `Prefs`, `Theming`, `ShareInbox` |
 | `app/src/main/java/io/github/rayvader/kirocrew/core/` | Pure Kotlin logic with no Android types: URL handling, profiles, injected page scripts, `data:` codecs, alert parsing, share rules, version compare, auto text size. Unit tested. |
 | `app/src/main/res/` | Layouts, menus, drawables, strings, themes, `xml/preferences.xml` (settings), `xml/network_security_config.xml` |
 | `app/src/test/` | JUnit tests for `core/` |

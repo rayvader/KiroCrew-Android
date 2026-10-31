@@ -179,6 +179,26 @@ The app saves the server and signs you in.<br><br>
     <string name="update_ready_body">Tap to update</string>
     <string name="update_install_ready">Update downloaded</string>
     <string name="update_install_tap">Tap to install</string>
+
+    <string name="froyo_widget_title">Froyo · Upcoming</string>
+    <string name="froyo_widget_description">Froyo\'s open items, soonest first. Tap Done to mark one done.</string>
+    <string name="froyo_open">%1$d open</string>
+    <string name="froyo_as_of">%1$s · as of %2$s</string>
+    <string name="froyo_empty">Nothing coming up</string>
+    <string name="froyo_loading">Loading…</string>
+    <string name="froyo_no_server">Add a server in the app first</string>
+    <string name="froyo_signed_out">Open the app to sign in</string>
+    <string name="froyo_failed">Can\'t reach Froyo right now</string>
+    <string name="froyo_done">Done</string>
+    <string name="froyo_done_desc">Mark %1$s done</string>
+    <string name="froyo_row_desc">%1$s, %2$s. Opens Froyo\'s chat.</string>
+    <string name="froyo_done_confirm">Mark \"%1$s\" done?</string>
+    <string name="froyo_done_yes">Mark done</string>
+    <string name="froyo_marked_done">Marked done: %1$s</string>
+    <string name="froyo_undo">Undo</string>
+    <string name="froyo_add_widget">Add Froyo widget</string>
+    <string name="froyo_add_widget_summary">Puts Froyo · Upcoming on your home screen</string>
+    <string name="froyo_add_widget_unsupported">Your launcher can\'t add it from here. Long-press the home screen, tap Widgets, then find Kiro Crew.</string>
     <string name="update_downloaded_title">Kiro Crew %1$s downloaded</string>
     <string name="update_ready_install_title">Version %1$s is ready to install</string>
     <string name="update_ready_install_body">It\'s downloaded. You have %1$s. Install %2$s now? Your settings and login stay.</string>
