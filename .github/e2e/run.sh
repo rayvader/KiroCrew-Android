@@ -920,6 +920,19 @@ wait_chat() {
 widget_rows() { dump && python3 "$HERE/ui.py" widget "$OUT/ui.xml" -; }
 top_of() { dump && python3 "$HERE/ui.py" top "$OUT/ui.xml" "$1"; }
 
+# Home, then the page that holds the widget. Home pressed on the launcher jumps to its
+# first page, and the launcher may have put the widget on another one.
+widget_home() {
+  local i
+  home
+  for i in 1 2 3; do
+    has_text "Froyo · Upcoming" && return 0
+    adb shell input swipe $((W * 4 / 5)) $((H / 2)) $((W / 5)) $((H / 2)) 300
+    sleep 1.5
+  done
+  wait_text "Froyo · Upcoming" 10
+}
+
 f_froyo_widget() {
   curl -s "$GW/test/froyo?mode=reset" >/dev/null
   launch
@@ -937,7 +950,7 @@ f_froyo_widget() {
   [[ -n $xy ]] || fail "no add button on the launcher's prompt"
   tap_xy $xy
   sleep 2
-  home
+  widget_home
   wait_text "Froyo · Upcoming" 30
   wait_text "E2E test parcel" 60
   check "the widget is on the home screen and lists Froyo's open items"
@@ -959,7 +972,7 @@ f_froyo_widget() {
   tap_now "E2E test flight"
   page_path /chat 30
   check "a row opens the app on Froyo's chat"
-  home
+  widget_home
 
   # Done asks first; Cancel changes nothing.
   wait_text "E2E test parcel" 20
@@ -980,7 +993,7 @@ f_froyo_widget() {
   check "after yes, an Undo bar shows"
   wait_chat "Done: E2E test parcel" 90
   check "the done reaches Froyo's chat as 'Done: <title>'"
-  home
+  widget_home
   wait_no_text "E2E test parcel" 30
   has_text "4 open" || fail "the count did not go down"
   check "the row is gone and the count goes down"
@@ -992,7 +1005,7 @@ f_froyo_widget() {
   tap_now "Undo"
   sleep 12
   ! froyo_chats | grep -qF "\"Done: E2E test dinner\"" || fail "Undo still sent the done"
-  home
+  widget_home
   wait_text "E2E test dinner" 20
   check "Undo brings the row back and sends nothing"
 
@@ -1000,7 +1013,7 @@ f_froyo_widget() {
   adb shell settings put system font_scale 1.15
   sleep 2
   launch
-  home
+  widget_home
   wait_text "Froyo · Upcoming" 20
   # The app redraws the widget for the new text size when it opens; give it a moment.
   sleep 6
@@ -1009,7 +1022,7 @@ f_froyo_widget() {
   adb shell settings put system font_scale 1.0
   sleep 2
   launch
-  home
+  widget_home
   wait_text "Froyo · Upcoming" 20
   # Ends on the home screen for the screenshot.
 }
