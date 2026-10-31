@@ -179,6 +179,11 @@ The app saves the server and signs you in.<br><br>
     <string name="update_ready_body">Tap to update</string>
     <string name="update_install_ready">Update downloaded</string>
     <string name="update_install_tap">Tap to install</string>
+    <string name="update_downloaded_title">Kiro Crew %1$s downloaded</string>
+    <string name="update_ready_install_title">Version %1$s is ready to install</string>
+    <string name="update_ready_install_body">It\'s downloaded. You have %1$s. Install %2$s now? Your settings and login stay.</string>
+    <string name="update_install">Install</string>
+    <string name="update_downloading_wifi">Downloading %1$s on Wi-Fi. You\'ll get a notice when it\'s ready to install.</string>
 
     <string name="cat_look">Look</string>
     <string name="theme">App theme</string>

@@ -92,9 +92,10 @@ How it works: the app reads `GET /api/notifications` on your gateway with the ap
 The app checks this repo's [latest release](https://github.com/rayvader/KiroCrew-Android/releases/latest) when it opens (at most every 6 hours) and once a day in the background.
 
 1. When a newer version exists, you get a prompt or a notification. The prompt lists what's new in that version (the same list as on the release page).
-2. Tap **Update**. The first time, Android asks you to let Kiro Crew install apps.
-3. The APK downloads from GitHub. The app checks its size and SHA-256 against the release.
-4. Android shows its install screen. Tap **Update**.
+2. On Wi-Fi (any unmetered network) the APK downloads by itself, through Android's downloader, which never switches to mobile data for it. When it is done you get a **Kiro Crew 2.0.x downloaded** notification, and the prompt reads **Version 2.0.x is ready to install** with an **Install** button.
+3. On mobile data nothing downloads until you tap **Update**. The first time, Android asks you to let Kiro Crew install apps.
+4. The app checks the APK's size and SHA-256 against the release. A version is downloaded once: a finished APK is reused, and a running download is left to finish.
+5. Android shows its install screen. Tap **Update**. Installing always needs your tap; Android requires it.
 
 Your settings and login stay. Android refuses an APK signed with a different key, so only builds from this repo's CI install over yours. Builds from branches are pre-releases and are never offered. Every release page has a **What's new** list: the pull requests merged since the last release (commits, for pre-releases).
 
@@ -177,7 +178,7 @@ Single Gradle module (`:app`). No backend of its own: it talks only to your Kiro
 
 | Path | What it holds |
 |---|---|
-| `app/src/main/java/io/github/rayvader/kirocrew/` | Activities and Android glue: `MainActivity` (WebView dashboard, bars, share, downloads), `SettingsActivity`, `ProfilesActivity` (servers), `CreditsActivity` (About), alerts (`AlertService`, `AlertSync`, `AlertsClient`, `Notifier`), updates (`Updates`, `UpdateFlow`, `GatewayUpdates`), `AppLock`, `Prefs`, `Theming`, `ShareInbox` |
+| `app/src/main/java/io/github/rayvader/kirocrew/` | Activities and Android glue: `MainActivity` (WebView dashboard, bars, share, downloads), `SettingsActivity`, `ProfilesActivity` (servers), `CreditsActivity` (About), alerts (`AlertService`, `AlertSync`, `AlertsClient`, `Notifier`), updates (`Updates`, `UpdateFlow`, `ApkDownloads`, `GatewayUpdates`), `AppLock`, `Prefs`, `Theming`, `ShareInbox` |
 | `app/src/main/java/io/github/rayvader/kirocrew/core/` | Pure Kotlin logic with no Android types: URL handling, profiles, injected page scripts, `data:` codecs, alert parsing, share rules, version compare, auto text size. Unit tested. |
 | `app/src/main/res/` | Layouts, menus, drawables, strings, themes, `xml/preferences.xml` (settings), `xml/network_security_config.xml` |
 | `app/src/test/` | JUnit tests for `core/` |

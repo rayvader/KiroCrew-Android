@@ -140,6 +140,19 @@ object Notifier {
         post(ctx, "update", ID_UPDATE, n)
     }
 
+    /** The APK downloaded by itself on Wi-Fi. Replaces the "is ready" notice; tapping opens the install prompt. */
+    fun postUpdateDownloaded(ctx: Context, version: String) {
+        val intent = Intent(ctx, MainActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            .putExtra(MainActivity.EXTRA_SHOW_UPDATE, true)
+        val n = base(ctx, CH_APP)
+            .setContentTitle(ctx.getString(R.string.update_downloaded_title, version))
+            .setContentText(ctx.getString(R.string.update_install_tap))
+            .setContentIntent(PendingIntent.getActivity(ctx, "update".hashCode(), intent, PI_FLAGS))
+            .build()
+        post(ctx, "update", ID_UPDATE, n)
+    }
+
     /** Kiro Crew itself has an update on this server. Tapping opens the dashboard's About page. */
     fun postGatewayUpdate(ctx: Context, profile: Profile, version: String) {
         val key = "gateway-update:${profile.id}"

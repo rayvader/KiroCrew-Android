@@ -895,6 +895,14 @@ f_update_check() {
   app_running || fail "update check crashed the app"
   has_text "Version 2.0." || fail "version row missing"
   check "Settings shows the app version"
+  # Wi-Fi auto-download: a "download done" broadcast for a job the app did not start is ignored.
+  adb shell am broadcast -a android.intent.action.DOWNLOAD_COMPLETE \
+    -n "$PKG/.ApkDownloadReceiver" --el extra_download_id 987654 >/dev/null
+  sleep 2
+  app_running || fail "a download-done broadcast crashed the app"
+  notifs
+  ! grep -qE "Kiro Crew [0-9.]+ downloaded" "$OUT/notif.txt" || fail "a download the app did not start was shown as ready to install"
+  check "the update downloader ignores a download it did not start"
   video_only "the result is a short toast ('You have the newest version'), see the video"
 }
 
