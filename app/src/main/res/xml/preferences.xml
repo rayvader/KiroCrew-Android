@@ -130,6 +130,11 @@
             app:key="fullscreen"
             app:summary="@string/fullscreen_summary"
             app:title="@string/fullscreen" />
+        <Preference
+            app:iconSpaceReserved="false"
+            app:key="froyo_widget"
+            app:summary="@string/froyo_add_widget_summary"
+            app:title="@string/froyo_add_widget" />
     </PreferenceCategory>
 
     <PreferenceCategory

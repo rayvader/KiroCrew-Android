@@ -7,6 +7,8 @@
   ui.py switch DUMP TITLE      "x y true|false" for the settings row titled TITLE
   ui.py window DUMPSYS FLAG    exit 0 when the app's main window has FLAG (from dumpsys window)
   ui.py jobs   DUMPSYS PKG     job ids the app has scheduled (from dumpsys jobscheduler)
+  ui.py widget DUMP -          Froyo widget rows shown; exit 1 when rows overlap or stick out
+  ui.py top    DUMP TEXT       top y of the node whose text equals TEXT
 """
 import re
 import sys
@@ -90,6 +92,49 @@ def window(path, flag):
     return 1
 
 
+def box(node):
+    m = BOUNDS.match(node.get("bounds", ""))
+    return tuple(map(int, m.groups())) if m else None
+
+
+def widget(path, _arg):
+    """The Froyo widget's rows: prints how many show; exit 1 when one overlaps another,
+    the header, or sticks out of the widget."""
+    found = {}
+    for node in nodes(path):
+        rid = node.get("resource-id", "")
+        for key in ("froyo_root", "froyo_header", "froyo_row1", "froyo_row2", "froyo_row3", "froyo_row4"):
+            if rid.endswith(":id/" + key) and key not in found:
+                found[key] = box(node)
+    root = found.get("froyo_root")
+    if not root:
+        print("no widget on screen")
+        return 1
+    rows = [found[k] for k in ("froyo_row1", "froyo_row2", "froyo_row3", "froyo_row4") if found.get(k)]
+    above = found.get("froyo_header")
+    for r in rows:
+        if r[1] < root[1] or r[3] > root[3]:
+            print("row outside the widget", r, root)
+            return 1
+        if above and r[1] < above[3]:
+            print("row overlaps the one above", r, above)
+            return 1
+        above = r
+    print(len(rows))
+    return 0
+
+
+def top(path, wanted):
+    """Top y of the first node whose text equals TEXT."""
+    for node in nodes(path):
+        if node.get("text", "").lower() == wanted.lower():
+            b = box(node)
+            if b:
+                print(b[1])
+                return 0
+    return 1
+
+
 def jobs(path, pkg):
     text = open(path, encoding="utf-8", errors="replace").read()
     ids = sorted(set(re.findall(r"JOB #u\d+a\d+/(\d+): \S+ " + re.escape(pkg) + "/", text)))
@@ -99,4 +144,5 @@ def jobs(path, pkg):
 
 if __name__ == "__main__":
     cmd, path, arg = sys.argv[1], sys.argv[2], sys.argv[3]
-    sys.exit({"find": find, "menu": menu, "has": has, "switch": switch, "window": window, "jobs": jobs}[cmd](path, arg))
+    sys.exit({"find": find, "menu": menu, "has": has, "switch": switch, "window": window, "jobs": jobs,
+              "widget": widget, "top": top}[cmd](path, arg))

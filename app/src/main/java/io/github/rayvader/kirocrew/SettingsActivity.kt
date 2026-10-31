@@ -95,6 +95,13 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
             true
         }
 
+        findPreference<Preference>("froyo_widget")?.setOnPreferenceClickListener {
+            if (!FroyoWidgets.requestPin(ctx)) {
+                Toast.makeText(ctx, R.string.froyo_add_widget_unsupported, Toast.LENGTH_LONG).show()
+            }
+            true
+        }
+
         findPreference<MultiSelectListPreference>("bottom_shortcuts")?.apply {
             summaryProvider = Preference.SummaryProvider<MultiSelectListPreference> { pref ->
                 val chosen = pref.values.mapNotNull { Shortcut.fromKey(it) }.sortedBy { it.ordinal }
@@ -155,6 +162,8 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
                     CookieManager.getInstance().flush()
                     WebStorage.getInstance().deleteAllData()
                     Prefs(ctx).pendingReload = true
+                    // The widget's saved list is the signed-in person's: drop it too.
+                    FroyoWidgets.clear(ctx)
                     Toast.makeText(ctx, R.string.signed_out, Toast.LENGTH_SHORT).show()
                 }
                 .show()

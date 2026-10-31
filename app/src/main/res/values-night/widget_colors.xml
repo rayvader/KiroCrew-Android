@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Froyo widget, dark theme. -->
+    <color name="widget_bg">#F21E1A2B</color>
+    <color name="widget_text">#F2EEFF</color>
+    <color name="widget_muted">#B9B3CC</color>
+    <color name="widget_chip_bg">#40A98BFF</color>
+    <color name="widget_soon">#FFB04D</color>
+    <color name="widget_late">#FF8A80</color>
+</resources>

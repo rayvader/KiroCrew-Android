@@ -906,6 +906,114 @@ f_update_check() {
   video_only "the result is a short toast ('You have the newest version'), see the video"
 }
 
+# Messages the app sent to Froyo's thread on the fake gateway (JSON list).
+froyo_chats() { curl -s "$GW/test/chats"; }
+wait_chat() {
+  local end=$((SECONDS + ${2:-60}))
+  while ((SECONDS < end)); do
+    froyo_chats | grep -qF "\"$1\"" && return 0
+    sleep 2
+  done
+  froyo_chats > "$OUT/logs/$FEATURE_ID-chats.json"
+  fail "Froyo never got: $1"
+}
+widget_rows() { dump && python3 "$HERE/ui.py" widget "$OUT/ui.xml" -; }
+top_of() { dump && python3 "$HERE/ui.py" top "$OUT/ui.xml" "$1"; }
+
+f_froyo_widget() {
+  curl -s "$GW/test/froyo?mode=reset" >/dev/null
+  launch
+  open_settings
+  tap "Add Froyo widget"
+  # The launcher asks first. Pixel Launcher's button says "Add to home screen".
+  local xy="" t end=$((SECONDS + 25))
+  while [[ -z $xy ]] && ((SECONDS < end)); do
+    sleep 1
+    dump || continue
+    for t in "Add to home screen" "Add automatically" "Add"; do
+      xy=$(python3 "$HERE/ui.py" find "$OUT/ui.xml" "$t") && break
+    done
+  done
+  [[ -n $xy ]] || fail "no add button on the launcher's prompt"
+  tap_xy $xy
+  sleep 2
+  home
+  wait_text "Froyo · Upcoming" 30
+  wait_text "E2E test parcel" 60
+  check "the widget is on the home screen and lists Froyo's open items"
+  has_text "5 open" || fail "the header does not say 5 open"
+  check "the header counts the open items"
+  has_text "late" || fail "the overdue item is not marked late"
+  check "an overdue item says late"
+  local a b c rows
+  a=$(top_of "E2E test parcel") && b=$(top_of "E2E test dinner") && c=$(top_of "E2E test flight") \
+    || fail "the first three items are not all shown"
+  ((a < b && b < c)) || fail "items are not soonest first ($a $b $c)"
+  check "items are soonest first"
+  rows=$(widget_rows) || fail "widget rows overlap: $rows"
+  ((rows >= 1 && rows <= 4)) || fail "the widget shows $rows rows"
+  check "up to 4 rows show, none overlapping ($rows at this height)"
+  adb exec-out screencap -p > "$OUT/shots/froyo-widget.png" 2>/dev/null || true
+
+  # Tap a row: the app opens on Froyo's chat.
+  tap_now "E2E test flight"
+  page_path /chat 30
+  check "a row opens the app on Froyo's chat"
+  home
+
+  # Done asks first; Cancel changes nothing.
+  wait_text "E2E test parcel" 20
+  tap_now "Mark E2E test parcel done"
+  wait_text 'Mark "E2E test parcel" done?' 15
+  check "Done asks first"
+  tap_now "android:id/button2"
+  sleep 6
+  ! froyo_chats | grep -qF "E2E test parcel" || fail "Cancel still sent the done"
+  wait_text "E2E test parcel" 10
+  check "Cancel keeps the item and sends nothing"
+
+  # Yes: the row goes, Undo shows, then the done reaches Froyo's thread.
+  tap_now "Mark E2E test parcel done"
+  wait_text 'Mark "E2E test parcel" done?' 15
+  tap_now "android:id/button1"
+  wait_text "Marked done: E2E test parcel" 5
+  check "after yes, an Undo bar shows"
+  wait_chat "Done: E2E test parcel" 90
+  check "the done reaches Froyo's chat as 'Done: <title>'"
+  home
+  wait_no_text "E2E test parcel" 30
+  has_text "4 open" || fail "the count did not go down"
+  check "the row is gone and the count goes down"
+
+  # Undo inside the window: nothing is sent and the row comes back.
+  tap_now "Mark E2E test dinner done"
+  wait_text 'Mark "E2E test dinner" done?' 15
+  tap_now "android:id/button1"
+  tap_now "Undo"
+  sleep 12
+  ! froyo_chats | grep -qF "\"Done: E2E test dinner\"" || fail "Undo still sent the done"
+  home
+  wait_text "E2E test dinner" 20
+  check "Undo brings the row back and sends nothing"
+
+  # Bigger text (115%): rows still fit with no overlap.
+  adb shell settings put system font_scale 1.15
+  sleep 2
+  launch
+  home
+  wait_text "Froyo · Upcoming" 20
+  # The app redraws the widget for the new text size when it opens; give it a moment.
+  sleep 6
+  rows=$(widget_rows) || { adb shell settings put system font_scale 1.0; fail "rows overlap at 115% text: $rows"; }
+  check "at 115% text the widget shows $rows rows with no overlap"
+  adb shell settings put system font_scale 1.0
+  sleep 2
+  launch
+  home
+  wait_text "Froyo · Upcoming" 20
+  # Ends on the home screen for the screenshot.
+}
+
 # "About" is also the name of its section header, so tap the row by its version line.
 open_about() {
   local v
@@ -1084,6 +1192,7 @@ feature "Theme and accent color" f_theme
 feature "Update check" f_update_check
 feature "About" f_about
 feature "Kiro Crew update check" f_gateway_update
+feature "Froyo widget" f_froyo_widget
 feature "Sign out" f_sign_out
 feature "App lock" f_app_lock
 

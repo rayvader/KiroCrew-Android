@@ -90,7 +90,42 @@ class AlertsClient(private val ctx: Context) {
         streamConn?.disconnect()
     }
 
-    private class Response(val code: Int, val body: String, val authRequired: Boolean)
+    class Response(val code: Int, val body: String, val authRequired: Boolean, val contentType: String? = null)
+
+    /**
+     * One API call with the login cookie, renewing an expired login once. A POST carries
+     * the dashboard's Origin, which the gateway's CSRF check asks for, and [json] as its body.
+     * Throws IOException on network errors.
+     */
+    fun call(profile: Profile, method: String, path: String, json: String? = null): Response {
+        var res = callOnce(profile, method, path, json)
+        if (res.authRequired && refresh(profile)) res = callOnce(profile, method, path, json)
+        return res
+    }
+
+    private fun callOnce(profile: Profile, method: String, path: String, json: String?): Response {
+        val conn = open(profile, method, path)
+        try {
+            conn.setRequestProperty("Accept", "application/json")
+            if (method != "GET") {
+                UrlTools.origin(profile.baseUrl)?.let { conn.setRequestProperty("Origin", it) }
+                val bytes = (json ?: "").toByteArray(Charsets.UTF_8)
+                conn.doOutput = true
+                if (json != null) conn.setRequestProperty("Content-Type", "application/json")
+                conn.setFixedLengthStreamingMode(bytes.size)
+                conn.outputStream.use { it.write(bytes) }
+            }
+            val code = conn.responseCode
+            val type = conn.contentType
+            // A chat send answers with a stream that lasts the whole turn: its status is the answer.
+            if (type?.startsWith("text/event-stream") == true) return Response(code, "", false, type)
+            val stream = if (code in 200..299) conn.inputStream else conn.errorStream
+            val body = stream?.use { readLimited(it) }.orEmpty()
+            return Response(code, body, isAuthRequired(conn, code), type)
+        } finally {
+            conn.disconnect()
+        }
+    }
 
     /**
      * Asks the gateway whether Kiro Crew itself has an update. Null when there is
