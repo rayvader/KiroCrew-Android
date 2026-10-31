@@ -182,10 +182,8 @@ Single Gradle module (`:app`). No backend of its own: it talks only to your Kiro
 | `app/src/main/res/` | Layouts, menus, drawables, strings, themes, `xml/preferences.xml` (settings), `xml/network_security_config.xml` |
 | `app/src/test/` | JUnit tests for `core/` |
 | `.github/workflows/android.yml` | Unit tests, release APK, emulator smoke and e2e tests, GitHub release |
-| `.github/workflows/demo.yml` | Manual demo video against a live gateway |
 | `.github/scripts/` | `smoke.sh` (emulator smoke test), `release_notes.py` (release changelog), `find_bounds.py` |
 | `.github/e2e/` | Fake gateway (`gateway.py`), UI driver and per-feature tests (`run.sh`, `ui.py`), report and demo video (`report.py`) |
-| `.github/demo/` | Demo tour run on the emulator |
 | `.github/smoke-site/` | Static test page for the smoke test |
 
 ## Build from source
@@ -225,8 +223,6 @@ The `e2e` job tests each feature above through the real app on the emulator, aga
 Releases are tagged `v2.0.<run number>` and carry `KiroCrew-2.0.<run number>.apk`. The release notes come from [`.github/scripts/release_notes.py`](.github/scripts/release_notes.py). Pull requests only build and keep the APK as a workflow artifact.
 
 A fork built by its own CI checks its own releases for updates (`GITHUB_REPOSITORY` is baked in at build time).
-
-The [Demo video](.github/workflows/demo.yml) workflow is manual only. It films the latest release against a live Kiro Crew gateway that the runner reaches over Tailscale, and needs the repository secrets `TS_AUTHKEY` and `DEMO_SIGNIN_URL`.
 
 ### Signing your own builds (forks)
 
