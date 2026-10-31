@@ -91,13 +91,15 @@ object Upcoming {
      * values in a JSON data island; this returns that island's [FIELD] as JSON text, or
      * null when the answer has no such field (no page yet, or Froyo never wrote it).
      */
-    fun extractItems(body: String): String? = try {
-        val html = JSONObject(body).optString("rendered_html")
-        val island = island(html) ?: return null
-        val fields = JSONObject(island).optJSONObject("fields") ?: return null
-        fields.optJSONArray(FIELD)?.toString()
-    } catch (e: JSONException) {
-        null
+    fun extractItems(body: String): String? {
+        return try {
+            val html = JSONObject(body).optString("rendered_html")
+            val island = island(html) ?: return null
+            val fields = JSONObject(island).optJSONObject("fields") ?: return null
+            fields.optJSONArray(FIELD)?.toString()
+        } catch (e: JSONException) {
+            null
+        }
     }
 
     private fun island(html: String): String? {
