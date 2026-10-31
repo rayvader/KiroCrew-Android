@@ -12,6 +12,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import io.github.rayvader.kirocrew.core.Release
 import io.github.rayvader.kirocrew.core.ReleaseNotes
+import io.github.rayvader.kirocrew.core.UpdateStep
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.thread
 
@@ -46,15 +47,29 @@ class UpdateFlow(private val activity: AppCompatActivity) {
         if (checking || downloading) return
         checking = true
         if (manual) toast(activity.getString(R.string.update_checking))
+        val app = activity.applicationContext
         thread(name = "kirocrew-update-check", isDaemon = true) {
             val result = UpdateChecker.check()
+            // On Wi-Fi a newer APK starts downloading here, with no tap; on mobile data it waits.
+            val step = when (result) {
+                is UpdateChecker.Check.Newer -> ApkDownloads.prepare(app, result.release)
+                UpdateChecker.Check.UpToDate -> UpdateStep.NOTHING.also { ApkDownloads.clear(app) }
+                is UpdateChecker.Check.Failed -> UpdateStep.NOTHING
+            }
             activity.runOnUiThread {
                 checking = false
                 prefs.lastUpdateCheckAt = System.currentTimeMillis()
                 if (!alive()) return@runOnUiThread
                 when (result) {
-                    is UpdateChecker.Check.Newer ->
-                        if (manual || !prefs.isUpdateSnoozed(result.release.version)) offer(result.release)
+                    is UpdateChecker.Check.Newer -> {
+                        val release = result.release
+                        when {
+                            step == UpdateStep.DOWNLOADING ->
+                                if (manual) toast(activity.getString(R.string.update_downloading_wifi, release.version))
+                            manual || !prefs.isUpdateSnoozed(release.version) ->
+                                offer(release, ready = step == UpdateStep.INSTALL)
+                        }
+                    }
                     UpdateChecker.Check.UpToDate ->
                         if (manual) toast(activity.getString(R.string.update_none, BuildConfig.VERSION_NAME))
                     is UpdateChecker.Check.Failed ->
@@ -64,19 +79,22 @@ class UpdateFlow(private val activity: AppCompatActivity) {
         }
     }
 
-    private fun offer(release: Release) {
+    /** The update prompt. [ready]: the APK is already downloaded and checked, so the button installs it. */
+    private fun offer(release: Release, ready: Boolean) {
+        val title = if (ready) R.string.update_ready_install_title else R.string.update_title
         MaterialAlertDialogBuilder(activity)
-            .setTitle(activity.getString(R.string.update_title, release.version))
-            .setMessage(offerText(release))
-            .setPositiveButton(R.string.update_now) { _, _ -> start(release) }
+            .setTitle(activity.getString(title, release.version))
+            .setMessage(offerText(release, ready))
+            .setPositiveButton(if (ready) R.string.update_install else R.string.update_now) { _, _ -> start(release) }
             .setNegativeButton(R.string.later) { _, _ -> prefs.snoozeUpdate(release.version) }
             .setNeutralButton(R.string.release_notes) { _, _ -> openPage(release.pageUrl) }
             .show()
     }
 
     /** The question, then the release's "What's new" list (a few lines) when it has one. */
-    private fun offerText(release: Release): String {
-        val question = activity.getString(R.string.update_body, BuildConfig.VERSION_NAME, release.version)
+    private fun offerText(release: Release, ready: Boolean): String {
+        val body = if (ready) R.string.update_ready_install_body else R.string.update_body
+        val question = activity.getString(body, BuildConfig.VERSION_NAME, release.version)
         if (release.notes.isEmpty()) return question
         val shown = release.notes.take(ReleaseNotes.MAX_ITEMS)
         val more = release.notes.size - shown.size
@@ -138,6 +156,8 @@ class UpdateFlow(private val activity: AppCompatActivity) {
         val app = activity.applicationContext
         thread(name = "kirocrew-update-download", isDaemon = true) {
             try {
+                // A tap takes over from a Wi-Fi download still waiting; a finished one is reused.
+                ApkDownloads.handOver(app)
                 val apk = ApkInstaller.download(app, release, { percent ->
                     activity.runOnUiThread {
                         bar.isIndeterminate = false

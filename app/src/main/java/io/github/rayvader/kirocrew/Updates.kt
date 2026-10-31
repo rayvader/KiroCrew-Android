@@ -19,6 +19,7 @@ import io.github.rayvader.kirocrew.core.PastRelease
 import io.github.rayvader.kirocrew.core.Release
 import io.github.rayvader.kirocrew.core.ReleaseHistory
 import io.github.rayvader.kirocrew.core.ReleaseParser
+import io.github.rayvader.kirocrew.core.UpdateStep
 import io.github.rayvader.kirocrew.core.Versions
 import java.io.File
 import java.io.IOException
@@ -121,9 +122,15 @@ class UpdateWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params)
         val prefs = Prefs(applicationContext)
         if (prefs.updateCheck) {
             val check = UpdateChecker.check()
-            if (check is UpdateChecker.Check.Newer && prefs.notifiedUpdateVersion != check.release.version) {
-                prefs.notifiedUpdateVersion = check.release.version
-                Notifier.postUpdate(applicationContext, check.release.version)
+            if (check is UpdateChecker.Check.Newer) {
+                // On Wi-Fi the APK starts downloading now; a finished one posts its own notice.
+                val step = ApkDownloads.prepare(applicationContext, check.release)
+                if (step != UpdateStep.INSTALL && prefs.notifiedUpdateVersion != check.release.version) {
+                    prefs.notifiedUpdateVersion = check.release.version
+                    Notifier.postUpdate(applicationContext, check.release.version)
+                }
+            } else if (check is UpdateChecker.Check.UpToDate) {
+                ApkDownloads.clear(applicationContext)
             }
         }
         GatewayUpdates.checkAll(applicationContext)
@@ -135,12 +142,21 @@ class UpdateWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params)
 object ApkInstaller {
     private const val ACTION_STATUS = "io.github.rayvader.kirocrew.INSTALL_STATUS"
 
-    /** Saves the APK in the app cache and checks its size and SHA-256. Throws IOException on any problem. */
+    /**
+     * Saves the APK in the app's update folder and checks its size and SHA-256. An APK already saved
+     * and checked for this release (say, downloaded on Wi-Fi) is used as is. Throws IOException on any problem.
+     */
     fun download(ctx: Context, release: Release, onProgress: (Int) -> Unit, isCancelled: () -> Boolean): File {
-        val dir = File(ctx.cacheDir, "updates")
+        val out = ApkDownloads.fileFor(ctx, release)
+        if (ApkDownloads.isVerified(ctx, release)) {
+            onProgress(100)
+            return out
+        }
+        val dir = ApkDownloads.dir(ctx)
         dir.mkdirs()
         dir.listFiles()?.forEach { it.delete() }
-        val out = File(dir, release.apkName)
+        // The old cache folder from earlier versions of the app.
+        File(ctx.cacheDir, "updates").takeIf { it != dir }?.deleteRecursively()
         val conn = URL(release.apkUrl).openConnection() as HttpURLConnection
         try {
             conn.connectTimeout = 15_000

@@ -101,6 +101,16 @@
             android:name=".InstallReceiver"
             android:exported="false" />
 
+        <!-- Android's downloader says an update APK fetched on Wi-Fi is done. It sends from its own
+             process, so this must be exported; the receiver only trusts its own job id and status. -->
+        <receiver
+            android:name=".ApkDownloadReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.DOWNLOAD_COMPLETE" />
+            </intent-filter>
+        </receiver>
+
         <!-- Let the QR scanner follow the phone's rotation (portrait on a phone, any on a fold). -->
         <activity
             android:name="com.journeyapps.barcodescanner.CaptureActivity"

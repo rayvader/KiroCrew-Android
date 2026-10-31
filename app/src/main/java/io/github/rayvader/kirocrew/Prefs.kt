@@ -113,6 +113,21 @@ class Prefs(context: Context) {
         get() = sp.getString(K_NOTIFIED_UPDATE, null)
         set(value) = sp.edit { putString(K_NOTIFIED_UPDATE, value) }
 
+    /** The Android downloader job fetching an update APK by itself on Wi-Fi, or -1. */
+    var apkDownloadId: Long
+        get() = sp.getLong(K_APK_DOWNLOAD_ID, -1L)
+        set(value) = sp.edit { putLong(K_APK_DOWNLOAD_ID, value) }
+
+    /** The version [apkDownloadId] fetches. */
+    var apkDownloadVersion: String?
+        get() = sp.getString(K_APK_DOWNLOAD_VERSION, null)
+        set(value) = sp.edit { putString(K_APK_DOWNLOAD_VERSION, value) }
+
+    /** A version whose download by itself failed, so it is not tried again without a tap. */
+    var apkDownloadFailedVersion: String?
+        get() = sp.getString(K_APK_DOWNLOAD_FAILED, null)
+        set(value) = sp.edit { putString(K_APK_DOWNLOAD_FAILED, value) }
+
     fun snoozeUpdate(version: String) = sp.edit {
         putString(K_SNOOZED_UPDATE, version)
         putLong(K_SNOOZED_AT, System.currentTimeMillis())
@@ -175,6 +190,9 @@ class Prefs(context: Context) {
         private const val K_CHANGELOG_VERSION = "changelog_version"
         private const val K_CHANGELOG_NOTES = "changelog_notes"
         private const val K_SNOOZED_AT = "snoozed_update_at"
+        private const val K_APK_DOWNLOAD_ID = "apk_download_id"
+        private const val K_APK_DOWNLOAD_VERSION = "apk_download_version"
+        private const val K_APK_DOWNLOAD_FAILED = "apk_download_failed"
         private const val SNOOZE_MS = 24L * 60 * 60 * 1000
     }
 }
