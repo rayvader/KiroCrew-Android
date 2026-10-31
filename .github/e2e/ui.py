@@ -7,7 +7,8 @@
   ui.py switch DUMP TITLE      "x y true|false" for the settings row titled TITLE
   ui.py window DUMPSYS FLAG    exit 0 when the app's main window has FLAG (from dumpsys window)
   ui.py jobs   DUMPSYS PKG     job ids the app has scheduled (from dumpsys jobscheduler)
-  ui.py widget DUMP -          Froyo widget rows shown; exit 1 when rows overlap or stick out
+  ui.py widget DUMP -          Froyo widget rows shown; exit 1 when rows or the "+N more" line
+                               overlap or stick out
   ui.py top    DUMP TEXT       top y of the node whose text equals TEXT
 """
 import re
@@ -103,16 +104,17 @@ def widget(path, _arg):
     found = {}
     for node in nodes(path):
         rid = node.get("resource-id", "")
-        for key in ("froyo_root", "froyo_header", "froyo_row1", "froyo_row2", "froyo_row3", "froyo_row4"):
+        for key in ["froyo_root", "froyo_header", "froyo_more"] + ["froyo_row%d" % i for i in range(1, 17)]:
             if rid.endswith(":id/" + key) and key not in found:
                 found[key] = box(node)
     root = found.get("froyo_root")
     if not root:
         print("no widget on screen")
         return 1
-    rows = [found[k] for k in ("froyo_row1", "froyo_row2", "froyo_row3", "froyo_row4") if found.get(k)]
+    rows = [found[k] for k in ["froyo_row%d" % i for i in range(1, 17)] if found.get(k)]
     above = found.get("froyo_header")
-    for r in rows:
+    lines = rows + ([found["froyo_more"]] if found.get("froyo_more") else [])
+    for r in lines:
         if r[1] < root[1] or r[3] > root[3]:
             print("row outside the widget", r, root)
             return 1

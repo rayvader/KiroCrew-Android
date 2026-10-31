@@ -63,11 +63,11 @@ object FroyoWidgets {
     private const val SP_MEMBER = "froyo_member"
     private const val SP_PROFILE = "froyo_profile"
 
-    private val rowIds = intArrayOf(R.id.froyo_row1, R.id.froyo_row2, R.id.froyo_row3, R.id.froyo_row4)
-    private val iconIds = intArrayOf(R.id.froyo_icon1, R.id.froyo_icon2, R.id.froyo_icon3, R.id.froyo_icon4)
-    private val dueIds = intArrayOf(R.id.froyo_due1, R.id.froyo_due2, R.id.froyo_due3, R.id.froyo_due4)
-    private val titleIds = intArrayOf(R.id.froyo_title1, R.id.froyo_title2, R.id.froyo_title3, R.id.froyo_title4)
-    private val doneIds = intArrayOf(R.id.froyo_done1, R.id.froyo_done2, R.id.froyo_done3, R.id.froyo_done4)
+    private val rowIds = intArrayOf(R.id.froyo_row1, R.id.froyo_row2, R.id.froyo_row3, R.id.froyo_row4, R.id.froyo_row5, R.id.froyo_row6, R.id.froyo_row7, R.id.froyo_row8, R.id.froyo_row9, R.id.froyo_row10, R.id.froyo_row11, R.id.froyo_row12, R.id.froyo_row13, R.id.froyo_row14, R.id.froyo_row15, R.id.froyo_row16)
+    private val iconIds = intArrayOf(R.id.froyo_icon1, R.id.froyo_icon2, R.id.froyo_icon3, R.id.froyo_icon4, R.id.froyo_icon5, R.id.froyo_icon6, R.id.froyo_icon7, R.id.froyo_icon8, R.id.froyo_icon9, R.id.froyo_icon10, R.id.froyo_icon11, R.id.froyo_icon12, R.id.froyo_icon13, R.id.froyo_icon14, R.id.froyo_icon15, R.id.froyo_icon16)
+    private val dueIds = intArrayOf(R.id.froyo_due1, R.id.froyo_due2, R.id.froyo_due3, R.id.froyo_due4, R.id.froyo_due5, R.id.froyo_due6, R.id.froyo_due7, R.id.froyo_due8, R.id.froyo_due9, R.id.froyo_due10, R.id.froyo_due11, R.id.froyo_due12, R.id.froyo_due13, R.id.froyo_due14, R.id.froyo_due15, R.id.froyo_due16)
+    private val titleIds = intArrayOf(R.id.froyo_title1, R.id.froyo_title2, R.id.froyo_title3, R.id.froyo_title4, R.id.froyo_title5, R.id.froyo_title6, R.id.froyo_title7, R.id.froyo_title8, R.id.froyo_title9, R.id.froyo_title10, R.id.froyo_title11, R.id.froyo_title12, R.id.froyo_title13, R.id.froyo_title14, R.id.froyo_title15, R.id.froyo_title16)
+    private val doneIds = intArrayOf(R.id.froyo_done1, R.id.froyo_done2, R.id.froyo_done3, R.id.froyo_done4, R.id.froyo_done5, R.id.froyo_done6, R.id.froyo_done7, R.id.froyo_done8, R.id.froyo_done9, R.id.froyo_done10, R.id.froyo_done11, R.id.froyo_done12, R.id.froyo_done13, R.id.froyo_done14, R.id.froyo_done15, R.id.froyo_done16)
 
     enum class Error { NONE, NO_SERVER, SIGNED_OUT, FAILED }
 
@@ -214,7 +214,7 @@ object FroyoWidgets {
     ): RemoteViews {
         val v = RemoteViews(ctx.packageName, R.layout.widget_froyo)
         val fontScale = ctx.resources.configuration.fontScale
-        val fit = Upcoming.fit(heightDp(ctx, options), fontScale)
+        val fit = Upcoming.fit(heightDp(ctx, options), fontScale, items.size)
         val profile = profile(ctx)
         val open = openApp(ctx, profile, Upcoming.chatPagePath(slotKey(ctx)), 0)
         v.setOnClickPendingIntent(R.id.froyo_root, open)
@@ -226,6 +226,8 @@ object FroyoWidgets {
                 .format(DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT))
             count = ctx.getString(R.string.froyo_as_of, count, time)
         }
+        // No room for a "+N more" line: it goes beside the count.
+        if (fit.more > 0 && !fit.moreLine && fit.header) count = "$count · ${Upcoming.moreText(fit.more)}"
         v.setViewVisibility(R.id.froyo_header, if (fit.header) View.VISIBLE else View.GONE)
         v.setTextViewText(R.id.froyo_count, count)
 
@@ -270,9 +272,13 @@ object FroyoWidgets {
             v.setContentDescription(doneIds[i], ctx.getString(R.string.froyo_done_desc, item.title))
             v.setOnClickPendingIntent(doneIds[i], doneIntent(ctx, item.title, i))
         }
-        // No header (4x1): the count goes on the one row instead, so it is not lost.
-        v.setViewVisibility(R.id.froyo_row_count, if (!fit.header && items.isNotEmpty()) View.VISIBLE else View.GONE)
-        v.setTextViewText(R.id.froyo_row_count, ctx.getString(R.string.froyo_open, items.size))
+        // Items that do not fit: a last "+N more" line that opens Froyo.
+        v.setViewVisibility(R.id.froyo_more, if (fit.moreLine) View.VISIBLE else View.GONE)
+        v.setTextViewText(R.id.froyo_more, Upcoming.moreText(fit.more))
+        v.setOnClickPendingIntent(R.id.froyo_more, openApp(ctx, profile, Upcoming.chatPagePath(slotKey(ctx)), 50))
+        // No header (4x1): "+N more" goes at the end of the one row instead, so it is not lost.
+        v.setViewVisibility(R.id.froyo_row_count, if (!fit.header && fit.more > 0) View.VISIBLE else View.GONE)
+        v.setTextViewText(R.id.froyo_row_count, Upcoming.moreText(fit.more))
         return v
     }
 

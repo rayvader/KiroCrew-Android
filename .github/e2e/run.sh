@@ -964,8 +964,11 @@ f_froyo_widget() {
   ((a < b && b < c)) || fail "items are not soonest first ($a $b $c)"
   check "items are soonest first"
   rows=$(widget_rows) || fail "widget rows overlap: $rows"
-  ((rows >= 1 && rows <= 4)) || fail "the widget shows $rows rows"
-  check "up to 4 rows show, none overlapping ($rows at this height)"
+  # The emulator's 4x2 is tall enough for all 5: none may be left out to fit.
+  ((rows == 5)) || fail "the widget shows $rows of 5 items with room to spare"
+  has_text "E2E test renewal" || fail "the fifth item is not shown"
+  ! has_text "more" || fail "'+N more' shows although every item fits"
+  check "every item shows when the height has room (5 of 5), none overlapping"
   adb exec-out screencap -p > "$OUT/shots/froyo-widget.png" 2>/dev/null || true
 
   # Tap a row: the app opens on Froyo's chat.
@@ -1018,7 +1021,9 @@ f_froyo_widget() {
   # The app redraws the widget for the new text size when it opens; give it a moment.
   sleep 6
   rows=$(widget_rows) || { adb shell settings put system font_scale 1.0; fail "rows overlap at 115% text: $rows"; }
-  check "at 115% text the widget shows $rows rows with no overlap"
+  dump && python3 "$HERE/ui.py" has "$OUT/ui.xml" "E2E test renewal" || python3 "$HERE/ui.py" has "$OUT/ui.xml" "more" \
+    || { adb shell settings put system font_scale 1.0; fail "at 115% text an item is neither shown nor counted in +N more"; }
+  check "at 115% text the widget shows $rows rows with no overlap, nothing lost"
   adb shell settings put system font_scale 1.0
   sleep 2
   launch
