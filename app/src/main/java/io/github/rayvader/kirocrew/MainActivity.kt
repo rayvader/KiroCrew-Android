@@ -559,19 +559,23 @@ class MainActivity : AppCompatActivity() {
         if (currentPageIsTrusted()) injectPageScripts()
     }
 
-    /** Page text size: the slider, or with Auto text size the screen-width size with the slider on top. */
-    private fun applyTextZoom() {
+    /**
+     * Page text size: the slider, or with Auto text size the folded/unfolded size with the
+     * slider on top. Keyed on the smallest width, so turning the phone does not change it.
+     */
+    private fun applyTextZoom(config: Configuration = resources.configuration) {
         webView.settings.textZoom = if (prefs.autoTextSize) {
-            AutoText.zoom(resources.configuration.screenWidthDp, prefs.textZoom)
+            AutoText.zoom(config.smallestScreenWidthDp, prefs.textZoom)
         } else {
             prefs.textZoom
         }
     }
 
-    // Folding, unfolding and turning the phone change the width without rebuilding the screen.
+    // Folding and unfolding change the smallest width without rebuilding the screen
+    // (the manifest handles smallestScreenSize|screenSize|screenLayout).
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        if (!webViewGone && prefs.autoTextSize) applyTextZoom()
+        if (!webViewGone && prefs.autoTextSize) applyTextZoom(newConfig)
     }
 
     private fun desktopUserAgent(ua: String): String =
