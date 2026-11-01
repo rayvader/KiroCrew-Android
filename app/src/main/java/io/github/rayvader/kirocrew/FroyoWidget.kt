@@ -260,7 +260,7 @@ object FroyoWidgets {
         v.setViewVisibility(R.id.froyo_list, if (items.isEmpty()) View.GONE else View.VISIBLE)
         if (Build.VERSION.SDK_INT >= 31) {
             // Snap the list to whole rows, so no row is cut at rest. Older Android fills the space.
-            v.setViewLayoutHeight(R.id.froyo_list, fit.listHeightDp, TypedValue.COMPLEX_UNIT_DP)
+            v.setViewLayoutHeight(R.id.froyo_list, fit.listHeightDp, TypedValue.COMPLEX_UNIT_DIP)
         }
         return v
     }
