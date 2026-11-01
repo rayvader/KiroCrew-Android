@@ -5,19 +5,19 @@ import kotlin.math.roundToInt
 /**
  * "Auto text size": a base page text size taken from the screen's smallest width
  * (`Configuration.smallestScreenWidthDp`), so a folded phone gets slightly larger text
- * and an unfolded phone or a tablet slightly smaller text. The smallest width does not
+ * and an unfolded phone or a tablet normal-size text. The smallest width does not
  * change when the phone is turned, so rotating never changes the size.
  *
  *   smallest width   size
  *   < 520 dp         110 %   folded phone, cover screen (~344-411 dp)
- *   520-599 dp       110 -> 90 %, straight line   (560 dp -> 100 %)
- *   >= 600 dp        90 %    unfolded phone, tablet
+ *   520-599 dp       110 -> 100 %, straight line   (560 dp -> 105 %)
+ *   >= 600 dp        100 %   unfolded phone, tablet
  */
 object AutoText {
     const val PHONE_MAX_DP = 520
     const val TABLET_MIN_DP = 600
     const val PHONE_PERCENT = 110
-    const val TABLET_PERCENT = 90
+    const val TABLET_PERCENT = 100
 
     /** The automatic size in percent for a screen whose smallest width is [smallestWidthDp]. */
     fun percent(smallestWidthDp: Int): Int = when {
