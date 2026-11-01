@@ -7,31 +7,45 @@ import org.junit.Test
 class AutoTextTest {
 
     @Test
-    fun phoneBaselineIsOneHundredPercent() {
-        assertEquals(100, AutoText.percent(360))
+    fun foldedPhonesGetSlightlyLargerText() {
+        assertEquals(110, AutoText.percent(344)) // Fold cover screen
+        assertEquals(110, AutoText.percent(360))
+        assertEquals(110, AutoText.percent(411)) // Pixel 6
+        assertEquals(110, AutoText.percent(519))
     }
 
     @Test
-    fun wideScreensGetLargerText() {
-        assertEquals(133, AutoText.percent(600)) // unfolded phone
-        assertEquals(150, AutoText.percent(800)) // tablet, capped
-        assertEquals(150, AutoText.percent(2000))
+    fun unfoldedPhonesAndTabletsGetSlightlySmallerText() {
+        assertEquals(90, AutoText.percent(600))
+        assertEquals(90, AutoText.percent(673)) // unfolded Fold inner screen
+        assertEquals(90, AutoText.percent(880))
+        assertEquals(90, AutoText.percent(2000))
     }
 
     @Test
-    fun narrowScreensShrinkALittle() {
-        assertEquals(94, AutoText.percent(320))
-        assertEquals(90, AutoText.percent(100)) // floor
-    }
-
-    @Test
-    fun growsWithWidth() {
-        var last = 0
-        for (w in 300..1000 step 20) {
+    fun betweenItBlendsInAStraightLine() {
+        assertEquals(110, AutoText.percent(520))
+        assertEquals(100, AutoText.percent(560))
+        assertEquals(105, AutoText.percent(540))
+        assertEquals(95, AutoText.percent(580))
+        var last = 111
+        for (w in 500..620) {
             val p = AutoText.percent(w)
-            assertTrue("$w dp: $p < $last", p >= last)
+            assertTrue("$w dp: $p > $last", p <= last)
+            assertTrue("$w dp: $p jumps from $last", last - p <= 1)
             last = p
         }
+    }
+
+    @Test
+    fun turningThePhoneDoesNotChangeTheSize() {
+        // The smallest width is the same upright and sideways, so the size is too: a folded
+        // phone 411x915 dp reads 411 either way; unfolded 673x841 reads 673 either way.
+        for (smallest in listOf(344, 411, 560, 673)) {
+            assertEquals(AutoText.zoom(smallest, 100), AutoText.zoom(smallest, 100))
+        }
+        assertEquals(AutoText.percent(411), AutoText.percent(minOf(411, 915)))
+        assertEquals(AutoText.percent(411), AutoText.percent(minOf(915, 411)))
     }
 
     @Test
@@ -42,21 +56,25 @@ class AutoTextTest {
 
     @Test
     fun sliderSitsOnTopOfTheAutomaticSize() {
-        assertEquals(100, AutoText.zoom(360, 100))
-        assertEquals(133, AutoText.zoom(600, 100))
-        assertEquals(200, AutoText.zoom(600, 150)) // 133 % x 150 %
-        assertEquals(67, AutoText.zoom(600, 50))
+        assertEquals(110, AutoText.zoom(411, 100))
+        assertEquals(88, AutoText.zoom(411, 80)) // 110 % x 80 %
+        assertEquals(132, AutoText.zoom(411, 120)) // 110 % x 120 %
+        assertEquals(90, AutoText.zoom(673, 100))
+        assertEquals(72, AutoText.zoom(673, 80)) // 90 % x 80 %
+        assertEquals(108, AutoText.zoom(673, 120)) // 90 % x 120 %
+        assertEquals(100, AutoText.zoom(560, 100))
     }
 
     @Test
     fun zoomStaysInRange() {
-        assertEquals(300, AutoText.zoom(2000, 200)) // 150 % x 200 %
-        assertTrue(AutoText.zoom(100, 50) >= AutoText.MIN_ZOOM)
+        assertEquals(220, AutoText.zoom(360, 200)) // 110 % x 200 %
+        assertTrue(AutoText.zoom(2000, 50) >= AutoText.MIN_ZOOM)
+        assertTrue(AutoText.zoom(360, 200) <= AutoText.MAX_ZOOM)
     }
 
     @Test
     fun sliderIsClampedToItsOwnRange() {
-        assertEquals(AutoText.zoom(600, 200), AutoText.zoom(600, 999))
-        assertEquals(AutoText.zoom(600, 50), AutoText.zoom(600, 1))
+        assertEquals(AutoText.zoom(673, 200), AutoText.zoom(673, 999))
+        assertEquals(AutoText.zoom(673, 50), AutoText.zoom(673, 1))
     }
 }

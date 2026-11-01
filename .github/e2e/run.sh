@@ -633,10 +633,10 @@ f_auto_text() {
   sleep 3
   wait_text "Download blob" 30
   after=$(node_width "Download blob") || fail "cannot measure the page text"
-  # The emulator is a Pixel 6 (411 dp wide): the automatic size is about 107 %.
-  ((after * 100 >= before * 104)) || fail "text did not grow with Auto text size ($before -> $after px)"
-  ((after * 100 <= before * 112)) || fail "text grew too much ($before -> $after px)"
-  check "Auto text size grows the page text on a wider screen ($before -> $after px)"
+  # The emulator is a Pixel 6 (411 dp smallest width, like a folded phone): the automatic size is 110 %.
+  ((after * 100 >= before * 106)) || fail "text did not grow with Auto text size ($before -> $after px)"
+  ((after * 100 <= before * 114)) || fail "text grew too much ($before -> $after px)"
+  check "Auto text size makes the text slightly bigger on a phone-sized screen ($before -> $after px)"
   adb shell settings put system accelerometer_rotation 0
   adb shell settings put system user_rotation 1
   sleep 4
@@ -645,8 +645,10 @@ f_auto_text() {
   wide=$(node_width "Download blob") || fail "cannot measure the page text in landscape"
   adb shell settings put system user_rotation 0
   sleep 3
-  ((wide > after)) || fail "turning the phone sideways did not make the text larger ($after -> $wide px)"
-  check "turning the phone sideways makes the text larger again"
+  # Same smallest width sideways, so the same size (a few px for layout rounding).
+  ((wide * 100 >= after * 97 && wide * 100 <= after * 103)) \
+    || fail "turning the phone sideways changed the text size ($after -> $wide px)"
+  check "turning the phone sideways keeps the same text size ($after -> $wide px)"
   open_settings
   set_switch "Auto text size" false
   back
