@@ -165,11 +165,16 @@ FROYO_SLOT = "member-froyo-e2e"
 FROYO_MEMBER = "Froyo E2E"
 
 
-def froyo_items():
-    """Made-up items, dated from today: one late, one today, two later, one with no date."""
+def froyo_items(many=False):
+    """Made-up items, dated from today: one late, one today, two later, one with no date.
+    many=True adds three more, so the widget's list has to scroll."""
     today = date.today()
     d = lambda n: (today + timedelta(days=n)).isoformat()
-    return [
+    extra = [
+        {"n": 5 + i, "title": "E2E test extra %d" % i, "due": d(14 + i), "kind": "booking", "flag": None}
+        for i in (1, 2, 3)
+    ] if many else []
+    return extra + [
         {"n": 1, "title": "E2E test parcel", "due": d(-1), "kind": "delivery", "flag": None},
         {"n": 2, "title": "E2E test dinner", "due": d(0), "kind": "booking", "flag": None},
         {"n": 3, "title": "E2E test flight", "due": d(3) + " 14:10", "kind": "flight", "flag": None},
@@ -292,9 +297,10 @@ def make_handler(state):
                     state.gw_update = {"latest": q.get("latest", ""), "status": q.get("status", "succeeded")}
                 return self.send(200, "ok")
             if p == "/test/froyo":
-                # mode=reset (the made-up list) or empty (nothing open).
+                # mode=reset (the made-up list), many (8 items, more than fit) or empty.
                 with state.lock:
-                    state.froyo = [] if q.get("mode") == "empty" else froyo_items()
+                    mode = q.get("mode")
+                    state.froyo = [] if mode == "empty" else froyo_items(many=mode == "many")
                     state.chats = []
                 return self.send(200, "ok")
             if p == "/test/chats":

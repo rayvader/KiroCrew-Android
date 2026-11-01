@@ -114,6 +114,12 @@
                 android:resource="@xml/froyo_widget_info" />
         </receiver>
 
+        <!-- Rows for the Froyo widget's scrolling list. Only the launcher may bind it. -->
+        <service
+            android:name=".FroyoWidgetService"
+            android:exported="false"
+            android:permission="android.permission.BIND_REMOTEVIEWS" />
+
         <!-- The widget's Done prompt, in its own task so it never brings the dashboard up. -->
         <activity
             android:name=".FroyoDoneActivity"

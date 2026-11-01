@@ -27,11 +27,12 @@ data class UpcomingItem(
 enum class DueState { NONE, LATER, SOON, LATE }
 
 /**
- * What fits in the widget at one size: how many rows, whether the header shows, and how many
- * items are left over ([more]). Left-over items get their own "+N more" line ([moreLine]), or,
- * when there is no room for one, "+N more" beside the count.
+ * How the widget lays out at one size. Every item is in the scrolling list; [rows] is how
+ * many whole rows the list shows at rest, and [listHeightDp] is its height, snapped to whole
+ * rows so none is cut at rest. [header] is false when only one row fits with no room for the
+ * header (4x1); the count then goes on the first row so it is not lost.
  */
-data class WidgetFit(val rows: Int, val header: Boolean, val more: Int = 0, val moreLine: Boolean = false)
+data class WidgetFit(val rows: Int, val header: Boolean, val listHeightDp: Float)
 
 /** Froyo's pinned chat: the slot to send to and the member name the dashboard read needs. */
 data class FroyoThread(val slotKey: String, val member: String)
@@ -48,8 +49,6 @@ object Upcoming {
 
     /** The dashboard field Froyo writes its open items to. */
     const val FIELD = "open_items"
-    /** Row slots in widget_froyo.xml. A 4x4 on a big phone fits about 15. */
-    const val MAX_ROWS = 16
     private const val MAX_TITLE = 200
     private const val DATA_ID = "kirocrew-dashboard-data"
 
@@ -210,47 +209,32 @@ object Upcoming {
         else -> "•"
     }
 
-    // Heights in dp, measured from widget_froyo.xml. Text lines grow with the font scale;
-    // padding does not.
+    // Fixed sizes from widget_froyo.xml and widget_froyo_item.xml. The header and each row
+    // have a fixed height in sp, so they grow with the font scale exactly; the padding is dp.
+    // Change both together.
     private const val PAD_DP = 12f
-    private const val HEADER_TEXT_DP = 19f
-    private const val HEADER_GAP_DP = 2f
-    private const val ROW_TEXT_DP = 18f
-    private const val CHIP_TEXT_DP = 16f
-    private const val CHIP_PAD_DP = 4f
-    private const val ROW_PAD_DP = 6f
+    const val HEADER_SP = 22f
+    const val ROW_SP = 28f
 
-    fun headerHeight(fontScale: Float): Float = HEADER_TEXT_DP * fontScale + HEADER_GAP_DP
+    fun headerHeight(fontScale: Float): Float = HEADER_SP * fontScale
 
-    fun rowHeight(fontScale: Float): Float =
-        maxOf(ROW_TEXT_DP * fontScale, CHIP_TEXT_DP * fontScale + CHIP_PAD_DP) + ROW_PAD_DP
+    fun rowHeight(fontScale: Float): Float = ROW_SP * fontScale
 
     /**
-     * The rows for [count] items at [heightDp] and [fontScale]: as many as fit the height, so
-     * nothing is hidden while there is room, and nothing overlaps when there is not. Items that
-     * still do not fit are counted on a last "+N more" line. Too short for that line: "+N more"
-     * goes beside the count. Too short for the header too (4x1): one row, "+N more" at its end.
+     * The layout at [heightDp] and [fontScale]: the header, then a list of as many whole rows
+     * as fit. The list scrolls through every item, so none is left out. Too short for the
+     * header and a row: one row, no header.
      */
-    fun fit(heightDp: Float, fontScale: Float, count: Int): WidgetFit {
+    fun fit(heightDp: Float, fontScale: Float): WidgetFit {
         val scale = if (fontScale > 0f) fontScale else 1f
-        val n = count.coerceAtLeast(0)
-        val slots = ((heightDp - PAD_DP - headerHeight(scale)) / rowHeight(scale)).toInt()
-            .coerceIn(0, MAX_ROWS)
-        if (slots >= 1) {
-            if (n <= slots) return WidgetFit(n, header = true)
-            if (slots >= 2) return WidgetFit(slots - 1, header = true, more = n - (slots - 1), moreLine = true)
-            return WidgetFit(1, header = true, more = n - 1)
-        }
-        return WidgetFit(minOf(1, n), header = false, more = (n - 1).coerceAtLeast(0))
+        val withHeader = ((heightDp - PAD_DP - headerHeight(scale)) / rowHeight(scale)).toInt()
+        if (withHeader >= 1) return WidgetFit(withHeader, header = true, listHeightDp = withHeader * rowHeight(scale))
+        return WidgetFit(1, header = false, listHeightDp = rowHeight(scale))
     }
 
-    /** "+N more" for [more] items left over. */
-    fun moreText(more: Int): String = "+$more more"
-
-    /** Height the header, rows and "+N more" line take, for checks that nothing overlaps. */
+    /** Height the header and the list take, for checks that nothing sticks out. */
     fun used(fit: WidgetFit, fontScale: Float): Float =
-        PAD_DP + (if (fit.header) headerHeight(fontScale) else 0f) +
-            (fit.rows + if (fit.moreLine) 1 else 0) * rowHeight(fontScale)
+        PAD_DP + (if (fit.header) headerHeight(fontScale) else 0f) + fit.listHeightDp
 
     /**
      * Items marked done on the phone stay hidden until Froyo's list drops them, or for

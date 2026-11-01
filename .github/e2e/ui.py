@@ -10,6 +10,7 @@
   ui.py widget DUMP -          Froyo widget rows shown; exit 1 when rows or the "+N more" line
                                overlap or stick out
   ui.py top    DUMP TEXT       top y of the node whose text equals TEXT
+  ui.py bounds DUMP ID         "x1 y1 x2 y2" of the node with resource id ID
 """
 import re
 import sys
@@ -99,22 +100,25 @@ def box(node):
 
 
 def widget(path, _arg):
-    """The Froyo widget's rows: prints how many show; exit 1 when one overlaps another,
-    the header, or sticks out of the widget."""
-    found = {}
+    """The Froyo widget's list rows on screen: prints how many; exit 1 when one overlaps
+    another or the header, or sticks out of the widget."""
+    root = header = None
+    rows = []
     for node in nodes(path):
         rid = node.get("resource-id", "")
-        for key in ["froyo_root", "froyo_header", "froyo_more"] + ["froyo_row%d" % i for i in range(1, 17)]:
-            if rid.endswith(":id/" + key) and key not in found:
-                found[key] = box(node)
-    root = found.get("froyo_root")
+        if rid.endswith(":id/froyo_root") and root is None:
+            root = box(node)
+        elif rid.endswith(":id/froyo_header") and header is None:
+            header = box(node)
+        elif rid.endswith(":id/froyo_item"):
+            b = box(node)
+            if b and b[3] > b[1]:
+                rows.append(b)
     if not root:
         print("no widget on screen")
         return 1
-    rows = [found[k] for k in ["froyo_row%d" % i for i in range(1, 17)] if found.get(k)]
-    above = found.get("froyo_header")
-    lines = rows + ([found["froyo_more"]] if found.get("froyo_more") else [])
-    for r in lines:
+    above = header
+    for r in sorted(rows, key=lambda r: r[1]):
         if r[1] < root[1] or r[3] > root[3]:
             print("row outside the widget", r, root)
             return 1
@@ -124,6 +128,17 @@ def widget(path, _arg):
         above = r
     print(len(rows))
     return 0
+
+
+def bounds(path, rid):
+    """"x1 y1 x2 y2" of the first node whose resource id ends with :id/RID."""
+    for node in nodes(path):
+        if node.get("resource-id", "").endswith(":id/" + rid):
+            b = box(node)
+            if b:
+                print(*b)
+                return 0
+    return 1
 
 
 def top(path, wanted):
@@ -147,4 +162,4 @@ def jobs(path, pkg):
 if __name__ == "__main__":
     cmd, path, arg = sys.argv[1], sys.argv[2], sys.argv[3]
     sys.exit({"find": find, "menu": menu, "has": has, "switch": switch, "window": window, "jobs": jobs,
-              "widget": widget, "top": top}[cmd](path, arg))
+              "widget": widget, "top": top, "bounds": bounds}[cmd](path, arg))
