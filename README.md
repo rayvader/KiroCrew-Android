@@ -92,12 +92,12 @@ How it works: the app reads `GET /api/notifications` on your gateway with the ap
 
 A home-screen widget, **Froyo · Upcoming**, lists the open items of the crewmate Froyo (`froyo-personal-butler`): bookings, flights, deliveries and deadlines. Add it from **Settings → Add Froyo widget**, or long-press the home screen and pick it under Widgets.
 
-- The header shows how many items are open. As many rows show as fit the widget's height, soonest first: kind icon (📅 booking, ✈ flight, 📦 delivery, ⏰ deadline), due day and time in 24-hour time (the day only when there is no time), and the title.
+- The header shows how many items are open and stays at the top. Below it, every open item is in a list you scroll with a finger, soonest first: kind icon (📅 booking, ✈ flight, 📦 delivery, ⏰ deadline), due day and time in 24-hour time (the day only when there is no time), and the title.
 - Due within 24 hours is orange. Overdue is red and says **late**.
 - Tap a row to open Froyo's chat in the app.
 - Tap **Done** on a row. The app asks first. Say yes and the row goes, with **Undo** for 5 seconds. Then the app sends `Done: <title>` to Froyo's chat, and Froyo marks it done. Undo after that sends `Undo done: <title>`. With app lock on, Done asks you to unlock first.
 - It refreshes about every 30 minutes, when you open the app, and after a Done. Nothing open shows **Nothing coming up**. When the server cannot be reached, the last list stays, with **as of HH:mm**.
-- Resize it from 4×1 to 4×4. A taller widget shows more rows. Items that still do not fit are counted on a last **+N more** line; tap it to open Froyo. Rows are never squeezed or overlapped.
+- Resize it from 4×1 to 4×4. A taller widget shows more rows at once; the list shows whole rows and scrolls to the rest. Rows are never squeezed or overlapped.
 
 How it works: the app reads Froyo's thread with `POST /api/members/froyo-personal-butler/thread` and its open items from `GET /api/members/froyo-personal-butler/dashboard` (the `open_items` field of Froyo's dashboard), with the app's own login cookie. Done is a chat message sent with `POST /api/chat`, the same call the dashboard's chat box makes.
 

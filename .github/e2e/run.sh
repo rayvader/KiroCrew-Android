@@ -917,7 +917,21 @@ wait_chat() {
   froyo_chats > "$OUT/logs/$FEATURE_ID-chats.json"
   fail "Froyo never got: $1"
 }
-widget_rows() { dump && python3 "$HERE/ui.py" widget "$OUT/ui.xml" -; }
+# Rows in the widget's list, once the list has settled: it reloads after each refresh, and a
+# dump taken mid-reload can miss a row. Two dumps in a row must agree, with no overlap.
+widget_rows() {
+  local i last="" now
+  for i in $(seq 1 12); do
+    if dump && now=$(python3 "$HERE/ui.py" widget "$OUT/ui.xml" -); then
+      [[ $now == "$last" ]] && { echo "$now"; return 0; }
+      last=$now
+    else
+      last=""
+    fi
+    sleep 1.5
+  done
+  dump && python3 "$HERE/ui.py" widget "$OUT/ui.xml" -
+}
 top_of() { dump && python3 "$HERE/ui.py" top "$OUT/ui.xml" "$1"; }
 
 # Home, then the page that holds the widget. Home pressed on the launcher jumps to its
@@ -964,10 +978,10 @@ f_froyo_widget() {
   ((a < b && b < c)) || fail "items are not soonest first ($a $b $c)"
   check "items are soonest first"
   rows=$(widget_rows) || fail "widget rows overlap: $rows"
-  # The emulator's 4x2 is tall enough for all 5: none may be left out to fit.
+  # The emulator's 4x2 is tall enough for all 5.
   ((rows == 5)) || fail "the widget shows $rows of 5 items with room to spare"
   has_text "E2E test renewal" || fail "the fifth item is not shown"
-  ! has_text "more" || fail "'+N more' shows although every item fits"
+  ! has_text "more" || fail "a '+N more' line shows; the list should hold every item"
   check "every item shows when the height has room (5 of 5), none overlapping"
   adb exec-out screencap -p > "$OUT/shots/froyo-widget.png" 2>/dev/null || true
 
@@ -1021,14 +1035,42 @@ f_froyo_widget() {
   # The app redraws the widget for the new text size when it opens; give it a moment.
   sleep 6
   rows=$(widget_rows) || { adb shell settings put system font_scale 1.0; fail "rows overlap at 115% text: $rows"; }
-  dump && python3 "$HERE/ui.py" has "$OUT/ui.xml" "E2E test renewal" || python3 "$HERE/ui.py" has "$OUT/ui.xml" "more" \
-    || { adb shell settings put system font_scale 1.0; fail "at 115% text an item is neither shown nor counted in +N more"; }
-  check "at 115% text the widget shows $rows rows with no overlap, nothing lost"
+  ((rows >= 1)) || { adb shell settings put system font_scale 1.0; fail "no rows at 115% text"; }
+  check "at 115% text the widget shows $rows rows with no overlap"
   adb shell settings put system font_scale 1.0
   sleep 2
+
+  # More items than fit: the list scrolls, and the last item's Done works.
+  curl -s "$GW/test/froyo?mode=many" >/dev/null
   launch
   widget_home
-  wait_text "Froyo · Upcoming" 20
+  wait_text "8 open" 60
+  check "the header counts all 8 items"
+  rows=$(widget_rows) || fail "widget rows overlap: $rows"
+  ((rows < 8)) || fail "all 8 rows fit; the scroll test needs more items than fit"
+  ! has_text "E2E test renewal" || fail "the last item shows before scrolling"
+  ! has_text "more" || fail "a '+N more' line shows; the list should hold every item"
+  check "$rows of 8 rows show at rest, none overlapping, no '+N more'"
+  local x1 y1 x2 y2 i
+  read -r x1 y1 x2 y2 < <(dump && python3 "$HERE/ui.py" bounds "$OUT/ui.xml" froyo_list) || fail "no list on screen"
+  for i in 1 2 3; do
+    adb shell input swipe $(((x1 + x2) / 2)) $((y2 - 20)) $(((x1 + x2) / 2)) $((y1 + 20)) 500
+    sleep 1.5
+    has_text "E2E test renewal" && break
+  done
+  has_text "E2E test renewal" || fail "the last item never shows after swiping the list"
+  check "swiping the list shows the last item"
+  rows=$(widget_rows) || fail "rows overlap after scrolling: $rows"
+  adb exec-out screencap -p > "$OUT/shots/froyo-widget-scrolled.png" 2>/dev/null || true
+  tap_now "Mark E2E test renewal done"
+  wait_text 'Mark "E2E test renewal" done?' 15
+  tap_now "android:id/button1"
+  wait_text "Marked done: E2E test renewal" 5
+  wait_chat "Done: E2E test renewal" 90
+  check "the last item's Done works after scrolling ('Done: E2E test renewal')"
+  widget_home
+  wait_text "7 open" 30
+  check "the count goes down to 7"
   # Ends on the home screen for the screenshot.
 }
 

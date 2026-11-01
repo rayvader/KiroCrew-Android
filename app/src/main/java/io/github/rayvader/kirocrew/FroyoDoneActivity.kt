@@ -1,5 +1,6 @@
 package io.github.rayvader.kirocrew
 
+import android.content.Intent
 import android.os.Bundle
 import android.widget.FrameLayout
 import androidx.appcompat.app.AppCompatActivity
@@ -20,6 +21,18 @@ class FroyoDoneActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // A row tap in the widget's list: open the app on Froyo's chat. The list has one
+        // tap template, so both row taps and Done chips land here.
+        intent.getStringExtra(EXTRA_OPEN_PATH)?.let { path ->
+            val open = Intent(this, MainActivity::class.java)
+                .setAction(Intent.ACTION_VIEW)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                .putExtra(MainActivity.EXTRA_PATH, path)
+            intent.getStringExtra(MainActivity.EXTRA_PROFILE)?.let { open.putExtra(MainActivity.EXTRA_PROFILE, it) }
+            startActivity(open)
+            finish()
+            return
+        }
         title = intent.getStringExtra(EXTRA_TITLE).orEmpty()
         if (title.isBlank()) {
             finish()
@@ -68,5 +81,6 @@ class FroyoDoneActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_TITLE = "io.github.rayvader.kirocrew.FROYO_TITLE"
+        const val EXTRA_OPEN_PATH = "io.github.rayvader.kirocrew.FROYO_OPEN_PATH"
     }
 }
