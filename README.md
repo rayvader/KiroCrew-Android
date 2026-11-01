@@ -129,7 +129,7 @@ Open **Settings** from the app menu.
 |---|---|
 | Server | Several servers, start page (or a custom path), fast page switching |
 | Notifications | On or off. Background alerts: only while open, every 15/30/60 minutes, or instant. Sound and vibration per kind of alert. |
-| Look | Light, dark or system theme. 6 accent colors. Force-dark pages. Text size 50–200 %, or **Auto text size**: slightly bigger text on a folded phone (110 %), slightly smaller on an unfolded phone or a tablet (90 %), and the slider adjusts it. Turning the phone does not change it. Top bar and bottom bar on or off. Pick up to 5 bottom-bar pages. Full screen. |
+| Look | Light, dark or system theme. 6 accent colors. Force-dark pages. Text size 50–200 %, or **Auto text size**: slightly bigger text on a folded phone (110 %), normal size on an unfolded phone or a tablet (100 %), and the slider adjusts it. Turning the phone does not change it. Top bar and bottom bar on or off. Pick up to 5 bottom-bar pages. Full screen. |
 | Behavior | Pull to refresh, keep screen on, desktop mode, open other sites in browser, double back to exit, custom CSS, user-agent suffix |
 | Security | App lock (fingerprint, face or screen lock) with timeout. Privacy screen (no screenshots, hidden in recents). |
 | Data | Clear cache. Sign out (cookies and site data). |

@@ -15,19 +15,19 @@ class AutoTextTest {
     }
 
     @Test
-    fun unfoldedPhonesAndTabletsGetSlightlySmallerText() {
-        assertEquals(90, AutoText.percent(600))
-        assertEquals(90, AutoText.percent(673)) // unfolded Fold inner screen
-        assertEquals(90, AutoText.percent(880))
-        assertEquals(90, AutoText.percent(2000))
+    fun unfoldedPhonesAndTabletsGetNormalText() {
+        assertEquals(100, AutoText.percent(600))
+        assertEquals(100, AutoText.percent(673)) // unfolded Fold inner screen
+        assertEquals(100, AutoText.percent(880))
+        assertEquals(100, AutoText.percent(2000))
     }
 
     @Test
     fun betweenItBlendsInAStraightLine() {
         assertEquals(110, AutoText.percent(520))
-        assertEquals(100, AutoText.percent(560))
-        assertEquals(105, AutoText.percent(540))
-        assertEquals(95, AutoText.percent(580))
+        assertEquals(105, AutoText.percent(560))
+        assertEquals(108, AutoText.percent(540))
+        assertEquals(103, AutoText.percent(580))
         var last = 111
         for (w in 500..620) {
             val p = AutoText.percent(w)
@@ -59,10 +59,10 @@ class AutoTextTest {
         assertEquals(110, AutoText.zoom(411, 100))
         assertEquals(88, AutoText.zoom(411, 80)) // 110 % x 80 %
         assertEquals(132, AutoText.zoom(411, 120)) // 110 % x 120 %
-        assertEquals(90, AutoText.zoom(673, 100))
-        assertEquals(72, AutoText.zoom(673, 80)) // 90 % x 80 %
-        assertEquals(108, AutoText.zoom(673, 120)) // 90 % x 120 %
-        assertEquals(100, AutoText.zoom(560, 100))
+        assertEquals(100, AutoText.zoom(673, 100))
+        assertEquals(80, AutoText.zoom(673, 80)) // 100 % x 80 %
+        assertEquals(120, AutoText.zoom(673, 120)) // 100 % x 120 %
+        assertEquals(105, AutoText.zoom(560, 100))
     }
 
     @Test
