@@ -917,7 +917,21 @@ wait_chat() {
   froyo_chats > "$OUT/logs/$FEATURE_ID-chats.json"
   fail "Froyo never got: $1"
 }
-widget_rows() { dump && python3 "$HERE/ui.py" widget "$OUT/ui.xml" -; }
+# Rows in the widget's list, once the list has settled: it reloads after each refresh, and a
+# dump taken mid-reload can miss a row. Two dumps in a row must agree, with no overlap.
+widget_rows() {
+  local i last="" now
+  for i in $(seq 1 12); do
+    if dump && now=$(python3 "$HERE/ui.py" widget "$OUT/ui.xml" -); then
+      [[ $now == "$last" ]] && { echo "$now"; return 0; }
+      last=$now
+    else
+      last=""
+    fi
+    sleep 1.5
+  done
+  dump && python3 "$HERE/ui.py" widget "$OUT/ui.xml" -
+}
 top_of() { dump && python3 "$HERE/ui.py" top "$OUT/ui.xml" "$1"; }
 
 # Home, then the page that holds the widget. Home pressed on the launcher jumps to its
