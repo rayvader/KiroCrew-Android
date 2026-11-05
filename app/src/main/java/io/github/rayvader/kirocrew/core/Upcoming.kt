@@ -295,7 +295,10 @@ object Upcoming {
      * after one renewal try; [code] is the HTTP status; [parsed] is false when a 200 held no
      * readable list. Null when the read worked.
      */
-    fun failReason(code: Int, authRequired: Boolean, parsed: Boolean): FailReason? = when {
+    fun failReason(code: Int, authRequired: Boolean, parsed: Boolean, contentType: String? = null): FailReason? = when {
+        // A web page instead of JSON: the request reached a dashboard page, not the API (for
+        // example a server address that kept a page path). Never a login problem.
+        isHtml(contentType) -> FailReason.FORMAT
         authRequired -> FailReason.SIGN_IN
         code == 200 && parsed -> null
         code == 200 -> FailReason.FORMAT
@@ -303,6 +306,10 @@ object Upcoming {
         code == 502 || code == 503 -> FailReason.NETWORK
         else -> FailReason.SERVER
     }
+
+    /** True for a `text/html` answer, which an API call never gets on purpose. */
+    fun isHtml(contentType: String?): Boolean =
+        contentType?.trim()?.lowercase(Locale.ROOT)?.startsWith("text/html") == true
 
     /**
      * True when the remembered thread may be the reason a read failed: the server no longer

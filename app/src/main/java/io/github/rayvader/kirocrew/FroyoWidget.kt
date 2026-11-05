@@ -143,14 +143,14 @@ object FroyoWidgets {
             var thread = thread(ctx, client, profile)
                 ?: return failThread(ctx)
             var res = client.call(profile, "GET", Upcoming.dashboardPath(thread.member), readTimeoutMs = DASHBOARD_READ_TIMEOUT_MS)
-            if (!res.authRequired && Upcoming.threadMayBeStale(res.code)) {
+            if (!res.authRequired && !Upcoming.isHtml(res.contentType) && Upcoming.threadMayBeStale(res.code)) {
                 // The remembered member or slot may be gone: ask for the thread again, once.
                 forgetThread(ctx)
                 thread = thread(ctx, client, profile) ?: return failThread(ctx)
                 res = client.call(profile, "GET", Upcoming.dashboardPath(thread.member), readTimeoutMs = DASHBOARD_READ_TIMEOUT_MS)
             }
-            val items = if (res.code == 200 && !res.authRequired) Upcoming.extractItems(res.body) else null
-            val reason = Upcoming.failReason(res.code, res.authRequired, items != null)
+            val items = if (res.code == 200 && !res.authRequired && !Upcoming.isHtml(res.contentType)) Upcoming.extractItems(res.body) else null
+            val reason = Upcoming.failReason(res.code, res.authRequired, items != null, res.contentType)
             if (reason != null || items == null) {
                 val error = if (reason == FailReason.SIGN_IN) Error.SIGNED_OUT else Error.FAILED
                 return saveError(ctx, error, reason ?: FailReason.FORMAT, "HTTP ${res.code}")
@@ -208,8 +208,9 @@ object FroyoWidgets {
         }
         val res = client.call(profile, "POST", Upcoming.THREAD_PATH)
         if (res.authRequired) lastAuth = Error.SIGNED_OUT
-        if (res.code != 200) {
-            lastThreadReason = Upcoming.failReason(res.code, res.authRequired, false)
+        if (res.code != 200 || Upcoming.isHtml(res.contentType)) {
+            lastThreadReason = Upcoming.failReason(res.code, res.authRequired, false, res.contentType)
+            if (Upcoming.isHtml(res.contentType)) lastAuth = null
             return null
         }
         val thread = Upcoming.parseThread(res.body)
