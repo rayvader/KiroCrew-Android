@@ -184,6 +184,10 @@ The app saves the server and signs you in.<br><br>
     <string name="froyo_widget_description">Froyo\'s open items, soonest first. Tap Done to mark one done.</string>
     <string name="froyo_open">%1$d open</string>
     <string name="froyo_as_of">%1$s · as of %2$s</string>
+    <string name="froyo_updated">%1$s · Updated %2$s</string>
+    <string name="froyo_updating_count">%1$s · Updating…</string>
+    <string name="froyo_updating">Updating…</string>
+    <string name="froyo_refresh">Refresh</string>
     <string name="froyo_empty">Nothing coming up</string>
     <string name="froyo_loading">Loading…</string>
     <string name="froyo_no_server">Add a server in the app first</string>

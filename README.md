@@ -96,7 +96,7 @@ A home-screen widget, **Froyo · Upcoming**, lists the open items of the crewmat
 - Due within 24 hours is orange. Overdue is red and says **late**.
 - Tap a row to open Froyo's chat in the app.
 - Tap **Done** on a row. The app asks first. Say yes and the row goes, with **Undo** for 5 seconds. Then the app sends `Done: <title>` to Froyo's chat, and Froyo marks it done. Undo after that sends `Undo done: <title>`. With app lock on, Done asks you to unlock first.
-- It refreshes about every 30 minutes, when you open the app, and after a Done. Nothing open shows **Nothing coming up**. When the server cannot be reached, the last list stays, with **as of HH:mm**.
+- It refreshes about every 30 minutes, when you open the app, after a Done, and when you tap **⟳** in the header (it shows **Updating…** while it reads). The header says **Updated HH:mm** after a good read. Nothing open shows **Nothing coming up**. When the server cannot be reached, the last list stays, with **as of HH:mm**.
 - Resize it from 4×1 to 4×4. A taller widget shows more rows at once; the list shows whole rows and scrolls to the rest. Rows are never squeezed or overlapped.
 
 How it works: the app reads Froyo's thread with `POST /api/members/froyo-personal-butler/thread` and its open items from `GET /api/members/froyo-personal-butler/dashboard` (the `open_items` field of Froyo's dashboard), with the app's own login cookie. Done is a chat message sent with `POST /api/chat`, the same call the dashboard's chat box makes.

@@ -142,6 +142,8 @@ class State:
         # Froyo's open items and the chat messages sent to its thread.
         self.froyo = froyo_items()
         self.chats = []
+        # True while a test wants Froyo's dashboard read to fail (the widget keeps its list).
+        self.froyo_down = False
 
     def now_ts(self):
         # Strictly increasing timestamps, so two notes pushed back to back never tie.
@@ -297,11 +299,14 @@ def make_handler(state):
                     state.gw_update = {"latest": q.get("latest", ""), "status": q.get("status", "succeeded")}
                 return self.send(200, "ok")
             if p == "/test/froyo":
-                # mode=reset (the made-up list), many (8 items, more than fit) or empty.
+                # mode=reset (the made-up list), many (8 items, more than fit), empty,
+                # or down (reads fail, the list is kept; any other mode brings it back up).
+                mode = q.get("mode")
                 with state.lock:
-                    mode = q.get("mode")
-                    state.froyo = [] if mode == "empty" else froyo_items(many=mode == "many")
-                    state.chats = []
+                    state.froyo_down = mode == "down"
+                    if mode != "down":
+                        state.froyo = [] if mode == "empty" else froyo_items(many=mode == "many")
+                        state.chats = []
                 return self.send(200, "ok")
             if p == "/test/chats":
                 with state.lock:
@@ -312,7 +317,9 @@ def make_handler(state):
                 if q.get("member") != FROYO_MEMBER:
                     return self.send(400, json.dumps({"code": "missing_member"}), "application/json")
                 with state.lock:
-                    items = list(state.froyo)
+                    items, down = list(state.froyo), state.froyo_down
+                if down:
+                    return self.send(503, json.dumps({"error": "down"}), "application/json")
                 return self.send(200, froyo_dashboard(items), "application/json")
             if p == "/api/update/check":
                 if not self.signed_in():
