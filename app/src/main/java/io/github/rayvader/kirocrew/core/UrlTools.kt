@@ -51,7 +51,37 @@ object UrlTools {
         if (p.scheme != "http" && p.scheme != "https") return null
         if (p.host.isEmpty()) return null
         val port = p.port?.let { ":$it" } ?: ""
-        return "${p.scheme}://${p.host}$port${p.path.trimEnd('/')}"
+        return "${p.scheme}://${p.host}$port${basePath(p.path)}"
+    }
+
+    /**
+     * First path segments that are dashboard pages or its API, never part of where the
+     * gateway is served. A server URL copied from the browser ("…/chat/my-chat") keeps
+     * that page in its path, and every API call joined onto it then reaches the page's
+     * catch-all instead of /api: the widget and alerts silently stop updating.
+     */
+    private val PAGE_ROOTS = setOf(
+        "chat", "schedule", "artifacts", "notifications", "capabilities", "apps",
+        "settings", "logs", "developer", "members", "api",
+    )
+
+    /** [path] cut before its first dashboard page segment, without a trailing slash. */
+    fun basePath(path: String): String {
+        val segments = path.split('/').filter { it.isNotEmpty() }
+        val cut = segments.indexOfFirst { it.lowercase() in PAGE_ROOTS }
+        val kept = if (cut < 0) segments else segments.take(cut)
+        return if (kept.isEmpty()) "" else kept.joinToString("/", prefix = "/")
+    }
+
+    /**
+     * A saved server URL with any dashboard page path dropped, so a profile saved before
+     * [normalizeServerUrl] cut it heals on read. Unparseable input comes back unchanged.
+     */
+    fun serverBase(url: String): String {
+        val p = parse(url) ?: return url
+        if (p.scheme != "http" && p.scheme != "https") return url
+        val port = p.port?.let { ":$it" } ?: ""
+        return "${p.scheme}://${p.host}$port${basePath(p.path)}"
     }
 
     /** No scheme typed: an explicit port, localhost, an IP or .local means plain HTTP (e.g. over Tailscale). */

@@ -21,7 +21,10 @@ object ProfileCodec {
             val id = dec(parts[0]) ?: return@mapNotNull null
             val name = dec(parts[1]) ?: return@mapNotNull null
             val url = dec(parts[2]) ?: return@mapNotNull null
-            if (id.isBlank() || url.isBlank()) null else Profile(id, name.ifBlank { url }, url)
+            if (id.isBlank() || url.isBlank()) return@mapNotNull null
+            // An older save may hold a page path ("…/chat/x"); API calls need the server base.
+            val base = UrlTools.serverBase(url)
+            Profile(id, name.ifBlank { base }, base)
         }
     }
 
