@@ -97,14 +97,21 @@ class AlertsClient(private val ctx: Context) {
      * the dashboard's Origin, which the gateway's CSRF check asks for, and [json] as its body.
      * Throws IOException on network errors.
      */
-    fun call(profile: Profile, method: String, path: String, json: String? = null): Response {
-        var res = callOnce(profile, method, path, json)
-        if (res.authRequired && refresh(profile)) res = callOnce(profile, method, path, json)
+    fun call(
+        profile: Profile,
+        method: String,
+        path: String,
+        json: String? = null,
+        readTimeoutMs: Int = READ_TIMEOUT_MS,
+    ): Response {
+        var res = callOnce(profile, method, path, json, readTimeoutMs)
+        if (res.authRequired && refresh(profile)) res = callOnce(profile, method, path, json, readTimeoutMs)
         return res
     }
 
-    private fun callOnce(profile: Profile, method: String, path: String, json: String?): Response {
+    private fun callOnce(profile: Profile, method: String, path: String, json: String?, readTimeoutMs: Int): Response {
         val conn = open(profile, method, path)
+        conn.readTimeout = readTimeoutMs
         try {
             conn.setRequestProperty("Accept", "application/json")
             if (method != "GET") {

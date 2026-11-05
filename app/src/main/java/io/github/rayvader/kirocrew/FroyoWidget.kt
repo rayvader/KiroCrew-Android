@@ -27,11 +27,14 @@ import androidx.work.Worker
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import io.github.rayvader.kirocrew.core.DueState
+import io.github.rayvader.kirocrew.core.FailReason
 import io.github.rayvader.kirocrew.core.Profile
 import io.github.rayvader.kirocrew.core.SyncNote
 import io.github.rayvader.kirocrew.core.Upcoming
 import io.github.rayvader.kirocrew.core.UpcomingItem
+import android.util.Log
 import java.io.IOException
+import java.net.SocketTimeoutException
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.Locale
@@ -70,6 +73,7 @@ object FroyoWidgets {
     private const val SP_ITEMS_AT = "froyo_items_at"
     private const val SP_ERROR = "froyo_error"
     private const val SP_REFRESHING_AT = "froyo_refreshing_at"
+    private const val SP_REASON = "froyo_fail_reason"
 
     /** The header's refresh button. Only this app can send it: the button's intent is explicit. */
     const val ACTION_REFRESH = "io.github.rayvader.kirocrew.FROYO_REFRESH"
@@ -133,33 +137,69 @@ object FroyoWidgets {
 
     /** Reads Froyo's thread and open items from the active server. Off the main thread. */
     fun fetch(ctx: Context): Error {
-        val profile = profile(ctx) ?: return saveError(ctx, Error.NO_SERVER)
+        val profile = profile(ctx) ?: return saveError(ctx, Error.NO_SERVER, null, "no server")
         val client = AlertsClient(ctx)
         return try {
-            val thread = thread(ctx, client, profile) ?: return saveError(ctx, lastAuth ?: Error.FAILED)
-            val res = client.call(profile, "GET", Upcoming.dashboardPath(thread.member))
-            if (res.authRequired) return saveError(ctx, Error.SIGNED_OUT)
-            if (res.code != 200) return saveError(ctx, Error.FAILED)
-            val items = Upcoming.extractItems(res.body) ?: return saveError(ctx, Error.FAILED)
+            var thread = thread(ctx, client, profile)
+                ?: return failThread(ctx)
+            var res = client.call(profile, "GET", Upcoming.dashboardPath(thread.member), readTimeoutMs = DASHBOARD_READ_TIMEOUT_MS)
+            if (!res.authRequired && Upcoming.threadMayBeStale(res.code)) {
+                // The remembered member or slot may be gone: ask for the thread again, once.
+                forgetThread(ctx)
+                thread = thread(ctx, client, profile) ?: return failThread(ctx)
+                res = client.call(profile, "GET", Upcoming.dashboardPath(thread.member), readTimeoutMs = DASHBOARD_READ_TIMEOUT_MS)
+            }
+            val items = if (res.code == 200 && !res.authRequired) Upcoming.extractItems(res.body) else null
+            val reason = Upcoming.failReason(res.code, res.authRequired, items != null)
+            if (reason != null || items == null) {
+                val error = if (reason == FailReason.SIGN_IN) Error.SIGNED_OUT else Error.FAILED
+                return saveError(ctx, error, reason ?: FailReason.FORMAT, "HTTP ${res.code}")
+            }
             sp(ctx).edit {
                 putString(SP_ITEMS, items)
                 putLong(SP_ITEMS_AT, System.currentTimeMillis())
                 putString(SP_ERROR, Error.NONE.name)
+                remove(SP_REASON)
             }
             Error.NONE
+        } catch (e: SocketTimeoutException) {
+            saveError(ctx, Error.FAILED, FailReason.TIMEOUT, e.javaClass.simpleName)
         } catch (e: IOException) {
-            saveError(ctx, Error.FAILED)
+            saveError(ctx, Error.FAILED, FailReason.NETWORK, e.javaClass.simpleName)
         } catch (e: RuntimeException) {
             // CookieManager throws while the WebView package is being updated.
-            saveError(ctx, Error.FAILED)
+            saveError(ctx, Error.FAILED, FailReason.NETWORK, e.javaClass.simpleName)
         }
     }
+
+    private fun failThread(ctx: Context): Error {
+        val auth = lastAuth
+        return if (auth == Error.SIGNED_OUT) {
+            saveError(ctx, Error.SIGNED_OUT, FailReason.SIGN_IN, "thread: sign-in")
+        } else {
+            saveError(ctx, Error.FAILED, lastThreadReason ?: FailReason.SERVER, "thread")
+        }
+    }
+
+    private fun forgetThread(ctx: Context) {
+        sp(ctx).edit {
+            remove(SP_SLOT)
+            remove(SP_MEMBER)
+            remove(SP_PROFILE)
+        }
+    }
+
+    /** The dashboard composes Froyo's whole page per read, which can be slow over a far link. */
+    private const val DASHBOARD_READ_TIMEOUT_MS = 45_000
+
+    @Volatile private var lastThreadReason: FailReason? = null
 
     @Volatile private var lastAuth: Error? = null
 
     /** Froyo's pinned chat, asked once per server and then remembered. */
     fun thread(ctx: Context, client: AlertsClient, profile: Profile): io.github.rayvader.kirocrew.core.FroyoThread? {
         lastAuth = null
+        lastThreadReason = null
         val sp = sp(ctx)
         val slot = sp.getString(SP_SLOT, null)
         val member = sp.getString(SP_MEMBER, null)
@@ -168,8 +208,15 @@ object FroyoWidgets {
         }
         val res = client.call(profile, "POST", Upcoming.THREAD_PATH)
         if (res.authRequired) lastAuth = Error.SIGNED_OUT
-        if (res.code != 200) return null
-        val thread = Upcoming.parseThread(res.body) ?: return null
+        if (res.code != 200) {
+            lastThreadReason = Upcoming.failReason(res.code, res.authRequired, false)
+            return null
+        }
+        val thread = Upcoming.parseThread(res.body)
+        if (thread == null) {
+            lastThreadReason = FailReason.FORMAT
+            return null
+        }
         sp.edit {
             putString(SP_SLOT, thread.slotKey)
             putString(SP_MEMBER, thread.member)
@@ -188,14 +235,25 @@ object FroyoWidgets {
             remove(SP_MEMBER)
             remove(SP_PROFILE)
             putString(SP_ERROR, Error.SIGNED_OUT.name)
+            putString(SP_REASON, FailReason.SIGN_IN.name)
         }
         render(ctx)
     }
 
-    private fun saveError(ctx: Context, error: Error): Error {
-        sp(ctx).edit { putString(SP_ERROR, error.name) }
+    private fun saveError(ctx: Context, error: Error, reason: FailReason? = null, detail: String = ""): Error {
+        // In logcat too, so a stuck widget can be traced: adb logcat -s FroyoWidget
+        Log.w(TAG, "read failed: ${error.name} ${reason?.word ?: "-"} $detail")
+        sp(ctx).edit {
+            putString(SP_ERROR, error.name)
+            if (reason != null) putString(SP_REASON, reason.name) else remove(SP_REASON)
+        }
         return error
     }
+
+    private const val TAG = "FroyoWidget"
+
+    private fun savedReason(ctx: Context): FailReason? =
+        sp(ctx).getString(SP_REASON, null)?.let { runCatching { FailReason.valueOf(it) }.getOrNull() }
 
     fun hide(ctx: Context, title: String) {
         val hidden = Upcoming.decodeHidden(sp(ctx).getString(SP_HIDDEN, null)).toMutableMap()
@@ -260,10 +318,11 @@ object FroyoWidgets {
         // line, so no row is given up for it.
         val open = ctx.getString(R.string.froyo_open, items.size)
         val refreshing = Upcoming.isRefreshing(sp(ctx).getLong(SP_REFRESHING_AT, 0L), System.currentTimeMillis())
-        val line = Upcoming.syncLine(refreshing, error != Error.NONE, loaded, at, ZoneId.systemDefault())
+        val line = Upcoming.syncLine(refreshing, error != Error.NONE, loaded, at, ZoneId.systemDefault(), savedReason(ctx))
         val count = when (line.note) {
             SyncNote.UPDATED -> ctx.getString(R.string.froyo_updated, open, line.time)
-            SyncNote.AS_OF -> ctx.getString(R.string.froyo_as_of, open, line.time)
+            SyncNote.AS_OF -> line.reason?.let { ctx.getString(R.string.froyo_as_of_why, open, line.time, it.word) }
+                ?: ctx.getString(R.string.froyo_as_of, open, line.time)
             SyncNote.UPDATING -> ctx.getString(R.string.froyo_updating_count, open)
             SyncNote.NONE -> open
         }
@@ -278,7 +337,8 @@ object FroyoWidgets {
             loaded -> null
             error == Error.NO_SERVER -> ctx.getString(R.string.froyo_no_server)
             error == Error.SIGNED_OUT -> ctx.getString(R.string.froyo_signed_out)
-            error == Error.FAILED -> ctx.getString(R.string.froyo_failed)
+            error == Error.FAILED -> savedReason(ctx)?.let { ctx.getString(R.string.froyo_failed_why, it.word) }
+                ?: ctx.getString(R.string.froyo_failed)
             else -> ctx.getString(R.string.froyo_loading)
         }
         v.setViewVisibility(R.id.froyo_message, if (message != null) View.VISIBLE else View.GONE)
