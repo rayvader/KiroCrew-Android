@@ -82,4 +82,23 @@ class UrlToolsTest {
         assertNull(UrlTools.parseQr("hello world"))
         assertNull(UrlTools.parseQr("WIFI:S:net;T:WPA;P:x;;"))
     }
+
+    @Test
+    fun normalize_dropsDashboardPagePath() {
+        assertEquals("https://h.ts.net", UrlTools.normalizeServerUrl("https://h.ts.net/chat/android-travel-planner-app"))
+        assertEquals("https://h.ts.net", UrlTools.normalizeServerUrl("https://h.ts.net/chat?sid=x"))
+        assertEquals("http://h:5476", UrlTools.normalizeServerUrl("h:5476/settings/overview"))
+        assertEquals("https://h.ts.net", UrlTools.normalizeServerUrl("https://h.ts.net/api/notifications"))
+        // A real sub-path the gateway is served under is kept, up to the page.
+        assertEquals("https://k.example.com/base", UrlTools.normalizeServerUrl("https://k.example.com/base/members/froyo"))
+        assertEquals("https://k.example.com/base", UrlTools.normalizeServerUrl("https://k.example.com/base"))
+    }
+
+    @Test
+    fun serverBase_healsSavedUrls() {
+        assertEquals("https://h.ts.net", UrlTools.serverBase("https://h.ts.net/chat/android-travel-planner-app"))
+        assertEquals("http://h.ts.net:5476", UrlTools.serverBase("http://h.ts.net:5476"))
+        assertEquals("https://k.example.com/base", UrlTools.serverBase("https://k.example.com/base"))
+        assertEquals("not a url", UrlTools.serverBase("not a url"))
+    }
 }
