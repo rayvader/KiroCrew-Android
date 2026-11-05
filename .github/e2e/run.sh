@@ -1073,6 +1073,40 @@ f_froyo_widget() {
   widget_home
   wait_text "7 open" 30
   check "the count goes down to 7"
+
+  # The refresh button reads the list now; the header says when.
+  curl -s "$GW/test/froyo?mode=reset" >/dev/null
+  widget_home
+  tap_now "Refresh"
+  wait_text "5 open · Updated" 30
+  local now shown
+  now=$(adb shell date +%H:%M | tr -d '\r')
+  dump
+  shown=$(grep -oE 'Updated [0-9]{2}:[0-9]{2}' "$OUT/ui.xml" | head -1 | cut -d' ' -f2)
+  [[ -n $shown ]] || fail "no 'Updated HH:mm' (24 h) in the header"
+  python3 - "$shown" "$now" <<'PY' || fail "Updated $shown is not the phone's time now ($now)"
+import sys
+m = lambda t: int(t[:2]) * 60 + int(t[3:])
+d = (m(sys.argv[2]) - m(sys.argv[1])) % 1440
+sys.exit(0 if d <= 2 else 1)
+PY
+  check "the refresh button reads the list now and says 'Updated HH:mm' (24 h)"
+  rows=$(widget_rows) || fail "rows overlap with the Updated note: $rows"
+  ((rows == 5)) || fail "the Updated note cost a row: $rows of 5 show"
+  check "the note shares the header: all 5 rows still show"
+  adb exec-out screencap -p > "$OUT/shots/froyo-widget-refresh.png" 2>/dev/null || true
+
+  # A failed read keeps the rows and says "as of HH:mm".
+  curl -s "$GW/test/froyo?mode=down" >/dev/null
+  tap_now "Refresh"
+  wait_text "5 open · as of" 30
+  has_text "E2E test parcel" || fail "a failed read hid the rows"
+  ! has_text "Updated" || fail "a failed read still says Updated"
+  check "a failed refresh keeps the rows and says 'as of HH:mm'"
+  curl -s "$GW/test/froyo?mode=reset" >/dev/null
+  tap_now "Refresh"
+  wait_text "5 open · Updated" 30
+  check "the next good read says Updated again"
   # Ends on the home screen for the screenshot.
 }
 

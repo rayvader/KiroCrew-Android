@@ -28,12 +28,12 @@ import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import io.github.rayvader.kirocrew.core.DueState
 import io.github.rayvader.kirocrew.core.Profile
+import io.github.rayvader.kirocrew.core.SyncNote
 import io.github.rayvader.kirocrew.core.Upcoming
 import io.github.rayvader.kirocrew.core.UpcomingItem
 import java.io.IOException
 import java.time.LocalDateTime
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
@@ -52,6 +52,14 @@ class FroyoWidgetProvider : AppWidgetProvider() {
     override fun onAppWidgetOptionsChanged(context: Context, manager: AppWidgetManager, id: Int, options: Bundle) {
         FroyoWidgets.render(context)
     }
+
+    override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action == FroyoWidgets.ACTION_REFRESH) {
+            FroyoWidgets.refreshNow(context)
+            return
+        }
+        super.onReceive(context, intent)
+    }
 }
 
 /** The widget's saved list, what it shows, and when it refreshes. Android calls only at run time. */
@@ -61,6 +69,10 @@ object FroyoWidgets {
     private const val SP_ITEMS = "froyo_items"
     private const val SP_ITEMS_AT = "froyo_items_at"
     private const val SP_ERROR = "froyo_error"
+    private const val SP_REFRESHING_AT = "froyo_refreshing_at"
+
+    /** The header's refresh button. Only this app can send it: the button's intent is explicit. */
+    const val ACTION_REFRESH = "io.github.rayvader.kirocrew.FROYO_REFRESH"
     private const val SP_HIDDEN = "froyo_hidden"
     private const val SP_SLOT = "froyo_slot"
     private const val SP_MEMBER = "froyo_member"
@@ -89,6 +101,21 @@ object FroyoWidgets {
     fun refresh(ctx: Context) {
         val request = OneTimeWorkRequestBuilder<FroyoRefreshWorker>().setConstraints(online()).build()
         WorkManager.getInstance(ctx).enqueueUniqueWork(REFRESH_NOW, ExistingWorkPolicy.REPLACE, request)
+    }
+
+    /** The refresh button: show "Updating…" at once, then read the list now. */
+    fun refreshNow(ctx: Context) {
+        sp(ctx).edit { putLong(SP_REFRESHING_AT, System.currentTimeMillis()) }
+        render(ctx)
+        // No network wait: offline, the read fails at once and the header says "as of HH:mm"
+        // instead of spinning until the network comes back.
+        val request = OneTimeWorkRequestBuilder<FroyoRefreshWorker>().build()
+        WorkManager.getInstance(ctx).enqueueUniqueWork(REFRESH_NOW, ExistingWorkPolicy.REPLACE, request)
+    }
+
+    /** A read finished, good or not: stop showing "Updating…". */
+    fun refreshDone(ctx: Context) {
+        sp(ctx).edit { remove(SP_REFRESHING_AT) }
     }
 
     /** From the app's onResume: only when a widget is on the home screen. */
@@ -228,15 +255,23 @@ object FroyoWidgets {
         val profile = profile(ctx)
         v.setOnClickPendingIntent(R.id.froyo_root, openApp(ctx, profile, Upcoming.chatPagePath(slotKey(ctx)), 0))
 
-        // Header: name and count, plus "as of HH:mm" when the last read failed.
-        var count = ctx.getString(R.string.froyo_open, items.size)
-        if (error != Error.NONE && loaded && at > 0) {
-            val time = java.time.Instant.ofEpochMilli(at).atZone(ZoneId.systemDefault())
-                .format(DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT))
-            count = ctx.getString(R.string.froyo_as_of, count, time)
+        // Header: name and count, then "Updated HH:mm" after a good read, "as of HH:mm" after a
+        // failed one, or "Updating…" while the refresh button's read runs. It shares the header
+        // line, so no row is given up for it.
+        val open = ctx.getString(R.string.froyo_open, items.size)
+        val refreshing = Upcoming.isRefreshing(sp(ctx).getLong(SP_REFRESHING_AT, 0L), System.currentTimeMillis())
+        val line = Upcoming.syncLine(refreshing, error != Error.NONE, loaded, at, ZoneId.systemDefault())
+        val count = when (line.note) {
+            SyncNote.UPDATED -> ctx.getString(R.string.froyo_updated, open, line.time)
+            SyncNote.AS_OF -> ctx.getString(R.string.froyo_as_of, open, line.time)
+            SyncNote.UPDATING -> ctx.getString(R.string.froyo_updating_count, open)
+            SyncNote.NONE -> open
         }
         v.setViewVisibility(R.id.froyo_header, if (fit.header) View.VISIBLE else View.GONE)
         v.setTextViewText(R.id.froyo_count, count)
+        v.setViewVisibility(R.id.froyo_refresh, if (refreshing) View.GONE else View.VISIBLE)
+        v.setViewVisibility(R.id.froyo_spinner, if (refreshing) View.VISIBLE else View.GONE)
+        v.setOnClickPendingIntent(R.id.froyo_refresh, refreshIntent(ctx))
 
         val message = when {
             loaded && items.isEmpty() -> ctx.getString(R.string.froyo_empty)
@@ -336,6 +371,11 @@ object FroyoWidgets {
 
     private const val PI_FLAGS = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
 
+    private fun refreshIntent(ctx: Context): PendingIntent {
+        val intent = Intent(ctx, FroyoWidgetProvider::class.java).setAction(ACTION_REFRESH)
+        return PendingIntent.getBroadcast(ctx, 7200, intent, PI_FLAGS)
+    }
+
     /** Settings > Add Froyo widget: asks the launcher to place it. False when the launcher cannot. */
     fun requestPin(ctx: Context): Boolean {
         val manager = AppWidgetManager.getInstance(ctx)
@@ -347,8 +387,12 @@ object FroyoWidgets {
 /** Reads Froyo's list and redraws the widgets. */
 class FroyoRefreshWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
     override fun doWork(): Result {
-        FroyoWidgets.fetch(applicationContext)
-        FroyoWidgets.render(applicationContext)
+        try {
+            FroyoWidgets.fetch(applicationContext)
+        } finally {
+            FroyoWidgets.refreshDone(applicationContext)
+            FroyoWidgets.render(applicationContext)
+        }
         return Result.success()
     }
 }

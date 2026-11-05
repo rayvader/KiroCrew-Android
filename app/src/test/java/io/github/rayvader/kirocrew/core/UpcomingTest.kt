@@ -106,6 +106,55 @@ class UpcomingTest {
     }
 
     @Test
+    fun aGoodReadSaysUpdatedInLocal24HourTime() {
+        val at = java.time.ZonedDateTime.of(2026, 11, 5, 14, 7, 0, 0, zone).toInstant().toEpochMilli()
+        assertEquals(SyncLine(SyncNote.UPDATED, "14:07"), Upcoming.syncLine(false, false, true, at, zone))
+        // Another zone, same instant: local time of that zone.
+        assertEquals(SyncLine(SyncNote.UPDATED, "06:07"), Upcoming.syncLine(false, false, true, at, ZoneId.of("UTC")))
+        val night = java.time.ZonedDateTime.of(2026, 11, 5, 23, 5, 0, 0, zone).toInstant().toEpochMilli()
+        assertEquals("23:05", Upcoming.syncLine(false, false, true, night, zone).time)
+    }
+
+    @Test
+    fun aFailedReadKeepsTheListAndSaysAsOf() {
+        val at = java.time.ZonedDateTime.of(2026, 11, 5, 9, 30, 0, 0, zone).toInstant().toEpochMilli()
+        assertEquals(SyncLine(SyncNote.AS_OF, "09:30"), Upcoming.syncLine(false, true, true, at, zone))
+    }
+
+    @Test
+    fun nothingReadYetSaysNothing() {
+        assertEquals(SyncNote.NONE, Upcoming.syncLine(false, false, false, 0L, zone).note)
+        assertEquals(SyncNote.NONE, Upcoming.syncLine(false, true, false, 0L, zone).note)
+        assertEquals(SyncNote.NONE, Upcoming.syncLine(false, false, true, 0L, zone).note)
+    }
+
+    @Test
+    fun aRunningRefreshSaysUpdating() {
+        assertEquals(SyncLine(SyncNote.UPDATING, ""), Upcoming.syncLine(true, false, true, 1_000L, zone))
+        assertEquals(SyncNote.UPDATING, Upcoming.syncLine(true, true, false, 0L, zone).note)
+    }
+
+    @Test
+    fun refreshSpinnerStopsWhenDoneOrStale() {
+        val t = 10_000_000L
+        assertTrue(Upcoming.isRefreshing(t, t))
+        assertTrue(Upcoming.isRefreshing(t, t + 30_000))
+        // A run that never reported back stops spinning after two minutes.
+        assertFalse(Upcoming.isRefreshing(t, t + Upcoming.REFRESH_SPIN_MS))
+        // Cleared (0) or a clock that went back: not refreshing.
+        assertFalse(Upcoming.isRefreshing(0L, t))
+        assertFalse(Upcoming.isRefreshing(t, t - 1))
+    }
+
+    @Test
+    fun theSyncNoteSitsInTheHeaderSoNoRowIsLost() {
+        // Rows per height are unchanged by the note: it shares the header line.
+        assertEquals(3, Upcoming.fit(139f, 1f).rows)
+        assertEquals(3, Upcoming.fit(139f, 1.15f).rows)
+        assertEquals(2, Upcoming.fit(110f, 1.15f).rows)
+    }
+
+    @Test
     fun listShowsWholeRowsAndScrollsTheRest() {
         // Raymond's Wide on Smart Launcher is about 139 dp; the emulator's 4x2 is about 223 dp.
         assertEquals(WidgetFit(3, true, 84f), Upcoming.fit(139f, 1f))

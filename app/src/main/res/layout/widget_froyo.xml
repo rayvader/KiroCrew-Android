@@ -40,6 +40,29 @@
             android:maxLines="1"
             android:textColor="@color/widget_muted"
             android:textSize="12sp" />
+
+        <!-- Refresh now. A spinner takes its place while the read runs. -->
+        <TextView
+            android:id="@+id/froyo_refresh"
+            android:layout_width="22sp"
+            android:layout_height="22sp"
+            android:layout_marginStart="4dp"
+            android:contentDescription="@string/froyo_refresh"
+            android:gravity="center"
+            android:text="⟳"
+            android:textColor="@color/widget_text"
+            android:textSize="15sp" />
+
+        <ProgressBar
+            android:id="@+id/froyo_spinner"
+            style="?android:attr/progressBarStyleSmall"
+            android:layout_width="16sp"
+            android:layout_height="16sp"
+            android:layout_marginStart="7dp"
+            android:layout_marginEnd="3dp"
+            android:contentDescription="@string/froyo_updating"
+            android:indeterminate="true"
+            android:visibility="gone" />
     </LinearLayout>
 
     <TextView

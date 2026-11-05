@@ -34,6 +34,12 @@ enum class DueState { NONE, LATER, SOON, LATE }
  */
 data class WidgetFit(val rows: Int, val header: Boolean, val listHeightDp: Float)
 
+/** What the header says after the count: when the list was read, or that it is being read. */
+enum class SyncNote { NONE, UPDATED, AS_OF, UPDATING }
+
+/** [note] plus the 24 h "HH:mm" it names (empty for [SyncNote.NONE] and [SyncNote.UPDATING]). */
+data class SyncLine(val note: SyncNote, val time: String)
+
 /** Froyo's pinned chat: the slot to send to and the member name the dashboard read needs. */
 data class FroyoThread(val slotKey: String, val member: String)
 
@@ -235,6 +241,26 @@ object Upcoming {
     /** Height the header and the list take, for checks that nothing sticks out. */
     fun used(fit: WidgetFit, fontScale: Float): Float =
         PAD_DP + (if (fit.header) headerHeight(fontScale) else 0f) + fit.listHeightDp
+
+    /** A tap on the refresh button counts as running for at most this long, so a lost run never spins forever. */
+    const val REFRESH_SPIN_MS = 2L * 60 * 1000
+
+    /** True while a refresh the person started is still running: started, and not older than [REFRESH_SPIN_MS]. */
+    fun isRefreshing(startedMs: Long, nowMs: Long): Boolean =
+        startedMs > 0 && nowMs >= startedMs && nowMs - startedMs < REFRESH_SPIN_MS
+
+    /**
+     * The header's sync note. While a refresh runs: "Updating…". After a good read: "Updated HH:mm".
+     * After a failed read with a saved list: "as of HH:mm", the time of the list still shown.
+     * Nothing when no list was ever read. [atMs] is when the shown list was read; the time is
+     * 24 h in [zone].
+     */
+    fun syncLine(refreshing: Boolean, failed: Boolean, loaded: Boolean, atMs: Long, zone: ZoneId): SyncLine {
+        if (refreshing) return SyncLine(SyncNote.UPDATING, "")
+        if (!loaded || atMs <= 0) return SyncLine(SyncNote.NONE, "")
+        val time = java.time.Instant.ofEpochMilli(atMs).atZone(zone).format(DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT))
+        return SyncLine(if (failed) SyncNote.AS_OF else SyncNote.UPDATED, time)
+    }
 
     /**
      * Items marked done on the phone stay hidden until Froyo's list drops them, or for
