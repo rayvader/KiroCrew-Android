@@ -184,6 +184,8 @@ The app saves the server and signs you in.<br><br>
     <string name="froyo_widget_description">Froyo\'s open items, soonest first. Tap Done to mark one done.</string>
     <string name="froyo_open">%1$d open</string>
     <string name="froyo_as_of">%1$s · as of %2$s</string>
+    <string name="froyo_as_of_why">%1$s · as of %2$s · %3$s</string>
+    <string name="froyo_failed_why">Couldn\'t update · %1$s</string>
     <string name="froyo_updated">%1$s · Updated %2$s</string>
     <string name="froyo_updating_count">%1$s · Updating…</string>
     <string name="froyo_updating">Updating…</string>

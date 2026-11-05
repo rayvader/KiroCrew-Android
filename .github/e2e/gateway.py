@@ -144,6 +144,8 @@ class State:
         self.chats = []
         # True while a test wants Froyo's dashboard read to fail (the widget keeps its list).
         self.froyo_down = False
+        # True while a test wants the dashboard to answer 200 with no readable list.
+        self.froyo_bad = False
 
     def now_ts(self):
         # Strictly increasing timestamps, so two notes pushed back to back never tie.
@@ -186,13 +188,20 @@ def froyo_items(many=False):
 
 
 def froyo_dashboard(items):
-    """Like GET /api/members/{slug}/dashboard: the page's values sit in a JSON data island."""
-    island = json.dumps({"fields": {"open_items": items, "items_as_of": "now"}, "agentic": ["open_items"]})
+    """Like GET /api/members/{slug}/dashboard for Froyo's page v4: the values sit in a JSON data
+    island. open_items_live (the sync job's list, an object) is current; the agentic open_items
+    lags behind and carries one stale row, which the widget must never show."""
+    stale = items + [{"n": 99, "title": "E2E stale row", "due": None, "kind": "deadline", "flag": None}]
+    island = json.dumps({
+        "fields": {"open_items": stale, "open_items_live": {"items": items, "as_of": "now"}, "items_as_of": "now"},
+        "agentic": ["open_items", "items_as_of"],
+    })
     island = island.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
     html = ('<!doctype html><html><head><title>Froyo</title></head><body>'
             '<script type="application/json" id="kirocrew-dashboard-data">' + island + '</script>'
             '<div id="open"></div></body></html>')
-    return json.dumps({"state": "live", "template": "e2e", "rendered_html": html})
+    return json.dumps({"instance_version": 4, "dashboard": "e2e", "state": "live", "scripts": True,
+                       "fields": ["items_as_of", "open_items", "open_items_live"], "rendered_html": html})
 
 
 def make_handler(state):
@@ -300,11 +309,13 @@ def make_handler(state):
                 return self.send(200, "ok")
             if p == "/test/froyo":
                 # mode=reset (the made-up list), many (8 items, more than fit), empty,
-                # or down (reads fail, the list is kept; any other mode brings it back up).
+                # down (503) or bad (200, no list): reads fail and the list is kept; any other
+                # mode brings it back up.
                 mode = q.get("mode")
                 with state.lock:
                     state.froyo_down = mode == "down"
-                    if mode != "down":
+                    state.froyo_bad = mode == "bad"
+                    if mode not in ("down", "bad"):
                         state.froyo = [] if mode == "empty" else froyo_items(many=mode == "many")
                         state.chats = []
                 return self.send(200, "ok")
@@ -317,9 +328,11 @@ def make_handler(state):
                 if q.get("member") != FROYO_MEMBER:
                     return self.send(400, json.dumps({"code": "missing_member"}), "application/json")
                 with state.lock:
-                    items, down = list(state.froyo), state.froyo_down
+                    items, down, bad = list(state.froyo), state.froyo_down, state.froyo_bad
                 if down:
                     return self.send(503, json.dumps({"error": "down"}), "application/json")
+                if bad:
+                    return self.send(200, json.dumps({"state": "empty"}), "application/json")
                 return self.send(200, froyo_dashboard(items), "application/json")
             if p == "/api/update/check":
                 if not self.signed_in():

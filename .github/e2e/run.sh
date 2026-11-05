@@ -1103,10 +1103,22 @@ PY
   has_text "E2E test parcel" || fail "a failed read hid the rows"
   ! has_text "Updated" || fail "a failed read still says Updated"
   check "a failed refresh keeps the rows and says 'as of HH:mm'"
+  has_text "· network" || fail "the header does not say why the read failed (503 -> network)"
+  check "the header says why: 'as of HH:mm · network'"
+
+  # A 200 with no readable list is a format problem, and says so.
+  curl -s "$GW/test/froyo?mode=bad" >/dev/null
+  tap_now "Refresh"
+  wait_text "· format" 30
+  has_text "E2E test parcel" || fail "a format failure hid the rows"
+  check "a page with no list says 'as of HH:mm · format' and keeps the rows"
   curl -s "$GW/test/froyo?mode=reset" >/dev/null
   tap_now "Refresh"
   wait_text "5 open · Updated" 30
+  ! has_text "· network" || fail "the reason stayed after a good read"
   check "the next good read says Updated again"
+  ! has_text "E2E stale row" || fail "the lagging open_items field was shown instead of open_items_live"
+  check "the live list (open_items_live) wins over the lagging open_items"
   # Ends on the home screen for the screenshot.
 }
 

@@ -38,7 +38,21 @@ data class WidgetFit(val rows: Int, val header: Boolean, val listHeightDp: Float
 enum class SyncNote { NONE, UPDATED, AS_OF, UPDATING }
 
 /** [note] plus the 24 h "HH:mm" it names (empty for [SyncNote.NONE] and [SyncNote.UPDATING]). */
-data class SyncLine(val note: SyncNote, val time: String)
+data class SyncLine(val note: SyncNote, val time: String, val reason: FailReason? = null)
+
+/** Why the last read failed, in a word the header can show next to "as of HH:mm". */
+enum class FailReason(val word: String) {
+    /** The login ran out and could not be renewed: open the app to sign in. */
+    SIGN_IN("sign-in"),
+    /** No connection, or the server could not be reached. */
+    NETWORK("network"),
+    /** The server took too long to answer. */
+    TIMEOUT("timeout"),
+    /** The server answered with an error code. */
+    SERVER("server"),
+    /** The server answered, but not with a list the widget can read. */
+    FORMAT("format"),
+}
 
 /** Froyo's pinned chat: the slot to send to and the member name the dashboard read needs. */
 data class FroyoThread(val slotKey: String, val member: String)
@@ -55,6 +69,12 @@ object Upcoming {
 
     /** The dashboard field Froyo writes its open items to. */
     const val FIELD = "open_items"
+
+    /**
+     * The field Froyo's sync job keeps current every 15 min: an object whose `items` is the
+     * same rows as [FIELD]. Preferred when it holds a list; [FIELD] is the fallback.
+     */
+    const val LIVE_FIELD = "open_items_live"
     private const val MAX_TITLE = 200
     private const val DATA_ID = "kirocrew-dashboard-data"
 
@@ -106,7 +126,8 @@ object Upcoming {
             val html = JSONObject(body).optString("rendered_html")
             val island = island(html) ?: return null
             val fields = JSONObject(island).optJSONObject("fields") ?: return null
-            fields.optJSONArray(FIELD)?.toString()
+            val live = fields.optJSONObject(LIVE_FIELD)?.optJSONArray("items")
+            (live ?: fields.optJSONArray(FIELD))?.toString()
         } catch (e: JSONException) {
             null
         }
@@ -255,12 +276,39 @@ object Upcoming {
      * Nothing when no list was ever read. [atMs] is when the shown list was read; the time is
      * 24 h in [zone].
      */
-    fun syncLine(refreshing: Boolean, failed: Boolean, loaded: Boolean, atMs: Long, zone: ZoneId): SyncLine {
+    fun syncLine(
+        refreshing: Boolean,
+        failed: Boolean,
+        loaded: Boolean,
+        atMs: Long,
+        zone: ZoneId,
+        reason: FailReason? = null,
+    ): SyncLine {
         if (refreshing) return SyncLine(SyncNote.UPDATING, "")
         if (!loaded || atMs <= 0) return SyncLine(SyncNote.NONE, "")
         val time = java.time.Instant.ofEpochMilli(atMs).atZone(zone).format(DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT))
-        return SyncLine(if (failed) SyncNote.AS_OF else SyncNote.UPDATED, time)
+        return if (failed) SyncLine(SyncNote.AS_OF, time, reason) else SyncLine(SyncNote.UPDATED, time)
     }
+
+    /**
+     * Why a read failed, from what the server answered. [authRequired] is the login check
+     * after one renewal try; [code] is the HTTP status; [parsed] is false when a 200 held no
+     * readable list. Null when the read worked.
+     */
+    fun failReason(code: Int, authRequired: Boolean, parsed: Boolean): FailReason? = when {
+        authRequired -> FailReason.SIGN_IN
+        code == 200 && parsed -> null
+        code == 200 -> FailReason.FORMAT
+        code == 408 || code == 504 -> FailReason.TIMEOUT
+        code == 502 || code == 503 -> FailReason.NETWORK
+        else -> FailReason.SERVER
+    }
+
+    /**
+     * True when the remembered thread may be the reason a read failed: the server no longer
+     * knows that member name or slot (400 / 404 / 409). The widget then asks for the thread again.
+     */
+    fun threadMayBeStale(code: Int): Boolean = code == 400 || code == 404 || code == 409
 
     /**
      * Items marked done on the phone stay hidden until Froyo's list drops them, or for

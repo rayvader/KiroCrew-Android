@@ -105,6 +105,83 @@ class UpcomingTest {
         assertEquals("•", Upcoming.icon("something-new"))
     }
 
+    /** Like Froyo's dashboard from page v4: open_items_live (sync job, object) beside open_items. */
+    private fun v4Dashboard(live: String?, items: String): String {
+        val liveField = live?.let { ",\"open_items_live\":$it" } ?: ""
+        val island = """{"fields":{"cleared_items":[],"coming_up":[],"items_as_of":"Thu 5 Nov, 17:01 SGT",""" +
+            """"milestones":[],"open_items":$items$liveField,"waiting_count":0,"waiting_items":[]},""" +
+            """"agentic":["cleared_items","coming_up","items_as_of","open_items"],"seq":42,"missing":[],""" +
+            """"written_at":{"open_items":"2026-11-05T09:00:37Z"},"locale":"en","subject":"crewmate","last_user_at":""}"""
+        val html = "<!doctype html><html><head><style>.x{}</style></head><body>" +
+            "<script type=\"application/json\" id=\"kirocrew-dashboard-data\">$island</script>" +
+            "<script>/* header time drawn by script */ document.getElementById('kirocrew-dashboard-data');</script>" +
+            "</body></html>"
+        return JSONObject()
+            .put("instance_version", 4)
+            .put("template", JSONObject().put("id", "froyo-dashboard").put("version", 4))
+            .put("dashboard", "froyo-dashboard")
+            .put("state", "live")
+            .put("fields", org.json.JSONArray(listOf("open_items", "open_items_live")))
+            .put("scripts", true)
+            .put("rendered_html", html)
+            .toString()
+    }
+
+    @Test
+    fun aV4PageIsReadAndPrefersTheLiveList() {
+        val old = """[{"n":1,"id":"a","title":"Old item","due":"2026-11-04","kind":"booking","flag":null}]"""
+        val live = """{"items":[{"n":1,"id":"b","title":"Test dinner 18:30","due":"2026-11-05","kind":"booking"},""" +
+            """{"n":2,"id":"c","title":"Test flight","due":"2026-11-09","kind":"flight"}],"as_of":"Thu 5 Nov, 17:01 SGT · 2 open"}"""
+        val items = Upcoming.parseItems(Upcoming.extractItems(v4Dashboard(live, old))!!, zone)
+        assertEquals(listOf("Test dinner 18:30", "Test flight"), items.map { it.title })
+    }
+
+    @Test
+    fun aV4PageWithoutTheLiveListFallsBackToOpenItems() {
+        val old = """[{"n":1,"title":"Only item","due":null,"kind":"bill","flag":"x"}]"""
+        assertEquals(listOf("Only item"), Upcoming.parseItems(Upcoming.extractItems(v4Dashboard(null, old))!!, zone).map { it.title })
+        // A live field that is not the expected object falls back too.
+        assertEquals(listOf("Only item"), Upcoming.parseItems(Upcoming.extractItems(v4Dashboard("\"soon\"", old))!!, zone).map { it.title })
+        assertEquals(listOf("Only item"), Upcoming.parseItems(Upcoming.extractItems(v4Dashboard("{\"as_of\":\"x\"}", old))!!, zone).map { it.title })
+        // An empty live list is a real answer: nothing open.
+        assertEquals("[]", Upcoming.extractItems(v4Dashboard("{\"items\":[]}", old)))
+    }
+
+    @Test
+    fun failureReasons() {
+        assertEquals(null, Upcoming.failReason(200, false, true))
+        assertEquals(FailReason.FORMAT, Upcoming.failReason(200, false, false))
+        assertEquals(FailReason.SIGN_IN, Upcoming.failReason(401, true, false))
+        assertEquals(FailReason.SIGN_IN, Upcoming.failReason(403, true, false))
+        assertEquals(FailReason.SERVER, Upcoming.failReason(403, false, false))
+        assertEquals(FailReason.SERVER, Upcoming.failReason(500, false, false))
+        assertEquals(FailReason.SERVER, Upcoming.failReason(409, false, false))
+        assertEquals(FailReason.NETWORK, Upcoming.failReason(502, false, false))
+        assertEquals(FailReason.TIMEOUT, Upcoming.failReason(504, false, false))
+        assertEquals("sign-in", FailReason.SIGN_IN.word)
+        assertEquals("network", FailReason.NETWORK.word)
+        assertEquals("format", FailReason.FORMAT.word)
+    }
+
+    @Test
+    fun aStaleThreadIsAskedForAgain() {
+        assertTrue(Upcoming.threadMayBeStale(400))
+        assertTrue(Upcoming.threadMayBeStale(404))
+        assertTrue(Upcoming.threadMayBeStale(409))
+        assertFalse(Upcoming.threadMayBeStale(200))
+        assertFalse(Upcoming.threadMayBeStale(401))
+        assertFalse(Upcoming.threadMayBeStale(500))
+    }
+
+    @Test
+    fun aFailedReadSaysWhyNextToAsOf() {
+        val at = java.time.ZonedDateTime.of(2026, 11, 5, 5, 48, 0, 0, ZoneId.of("Indian/Maldives")).toInstant().toEpochMilli()
+        val line = Upcoming.syncLine(false, true, true, at, ZoneId.of("Indian/Maldives"), FailReason.NETWORK)
+        assertEquals(SyncLine(SyncNote.AS_OF, "05:48", FailReason.NETWORK), line)
+        // A good read carries no reason, even if an old one was saved.
+        assertEquals(null, Upcoming.syncLine(false, false, true, at, zone, FailReason.NETWORK).reason)
+    }
+
     @Test
     fun aGoodReadSaysUpdatedInLocal24HourTime() {
         val at = java.time.ZonedDateTime.of(2026, 11, 5, 14, 7, 0, 0, zone).toInstant().toEpochMilli()
