@@ -164,6 +164,21 @@ class UpcomingTest {
     }
 
     @Test
+    fun aWebPageInsteadOfJsonIsAFormatProblemNotSignIn() {
+        // A server address that kept a page path (/chat/<slug>) gets the page's HTML back.
+        assertEquals(FailReason.FORMAT, Upcoming.failReason(200, false, false, "text/html; charset=utf-8"))
+        assertEquals(FailReason.FORMAT, Upcoming.failReason(403, true, false, "text/html"))
+        assertEquals(FailReason.FORMAT, Upcoming.failReason(403, false, false, "Text/HTML"))
+        assertEquals(FailReason.SIGN_IN, Upcoming.failReason(401, true, false, "application/json"))
+        assertEquals(FailReason.SERVER, Upcoming.failReason(403, false, false, "application/json"))
+        assertTrue(Upcoming.isHtml("text/html"))
+        assertFalse(Upcoming.isHtml("application/json"))
+        assertFalse(Upcoming.isHtml(null))
+        // The page's HTML has no dashboard data island: no list.
+        assertNull(Upcoming.extractItems("<!doctype html><html><body><div id=\"root\"></div></body></html>"))
+    }
+
+    @Test
     fun aStaleThreadIsAskedForAgain() {
         assertTrue(Upcoming.threadMayBeStale(400))
         assertTrue(Upcoming.threadMayBeStale(404))
