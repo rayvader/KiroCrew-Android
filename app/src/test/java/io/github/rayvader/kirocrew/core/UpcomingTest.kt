@@ -136,6 +136,27 @@ class UpcomingTest {
         assertEquals(listOf("Test dinner 18:30", "Test flight"), items.map { it.title })
     }
 
+    /** The real shape: the gateway's custom fold row wraps the job's record in `data`. */
+    @Test
+    fun theLiveListIsReadFromTheFoldRowsData() {
+        val old = """[{"n":1,"id":"a","title":"Old item","due":"2026-11-04","kind":"booking","flag":null}]"""
+        val live = """{"data":{"items":[{"n":1,"id":"b","title":"Test dinner 18:30","due":"2026-11-05","kind":"booking"},""" +
+            """{"n":2,"id":"c","title":"Test snorkel 14:30","due":"2026-11-06","kind":"booking"}],""" +
+            """"as_of":"Thu 5 Nov, 21:28 SGT · 2 open"},"at":"2026-11-05T13:28:55Z",""" +
+            """"writer":"4cbe3e0f","stale_after":"2026-11-05T14:28:55Z"}"""
+        val items = Upcoming.parseItems(Upcoming.extractItems(v4Dashboard(live, old))!!, zone)
+        assertEquals(listOf("Test dinner 18:30", "Test snorkel 14:30"), items.map { it.title })
+    }
+
+    @Test
+    fun aFoldRowWithNoListInItsDataFallsBackToOpenItems() {
+        val old = """[{"n":1,"title":"Only item","due":null,"kind":"bill","flag":"x"}]"""
+        val live = """{"data":{"as_of":"x"},"at":"2026-11-05T13:28:55Z"}"""
+        assertEquals(listOf("Only item"), Upcoming.parseItems(Upcoming.extractItems(v4Dashboard(live, old))!!, zone).map { it.title })
+        // An empty list under data is a real answer: nothing open.
+        assertEquals("[]", Upcoming.extractItems(v4Dashboard("""{"data":{"items":[]}}""", old)))
+    }
+
     @Test
     fun aV4PageWithoutTheLiveListFallsBackToOpenItems() {
         val old = """[{"n":1,"title":"Only item","due":null,"kind":"bill","flag":"x"}]"""

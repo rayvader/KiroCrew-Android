@@ -71,8 +71,9 @@ object Upcoming {
     const val FIELD = "open_items"
 
     /**
-     * The field Froyo's sync job keeps current every 15 min: an object whose `items` is the
-     * same rows as [FIELD]. Preferred when it holds a list; [FIELD] is the fallback.
+     * The field Froyo's sync job keeps current every 15 min: the gateway's custom fold row
+     * {data: {items, as_of}, at, stale_after}, whose `data.items` is the same rows as [FIELD].
+     * Preferred when it holds a list; [FIELD] is the fallback.
      */
     const val LIVE_FIELD = "open_items_live"
     private const val MAX_TITLE = 200
@@ -126,7 +127,12 @@ object Upcoming {
             val html = JSONObject(body).optString("rendered_html")
             val island = island(html) ?: return null
             val fields = JSONObject(island).optJSONObject("fields") ?: return null
-            val live = fields.optJSONObject(LIVE_FIELD)?.optJSONArray("items")
+            // The gateway's custom fold row is {data: {items, as_of}, at, stale_after}: the
+            // sync job's record sits under `data`, which is where the page itself reads it.
+            // A bare {items} is still read, in case a page binds `.data` directly.
+            val liveObj = fields.optJSONObject(LIVE_FIELD)
+            val live = liveObj?.optJSONObject("data")?.optJSONArray("items")
+                ?: liveObj?.optJSONArray("items")
             (live ?: fields.optJSONArray(FIELD))?.toString()
         } catch (e: JSONException) {
             null
