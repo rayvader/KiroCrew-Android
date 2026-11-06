@@ -949,13 +949,16 @@ list_swipe() {
   sleep 1.5
 }
 list_top() { local i; for i in 1 2 3 4 5 6; do list_swipe down || return 1; done; }
-# Scroll the list until TEXT is on screen.
+# Scroll the list until the card titled TEXT is wholly in view (a card cut by the list's
+# edge does not count: its title may be out of sight).
+card_shown() { dump && python3 "$HERE/ui.py" shown "$OUT/ui.xml" "$1"; }
 list_show() {
   local i
-  has_text "$1" && return 0
-  for i in $(seq 1 10); do list_swipe up || break; has_text "$1" && return 0; done
+  card_shown "$1" && return 0
   list_top
-  has_text "$1" || fail "not in the widget's list, even after scrolling: $1"
+  card_shown "$1" && return 0
+  for i in $(seq 1 12); do list_swipe up || break; card_shown "$1" && return 0; done
+  fail "not wholly in view in the widget's list, even after scrolling: $1"
 }
 # Walk the whole list from the top: check every card in view (title and Done chip whole), and
 # print each line once, in list order, to $OUT/list.txt.
@@ -991,8 +994,8 @@ days_check() {
   check "$where: headers in order (Today with the late item, Tomorrow, later, next year, No date last); every card whole, Done visible; scrolling reaches the last item"
   list_show "$LONG"
   long=$(dump && python3 "$HERE/ui.py" height "$OUT/ui.xml" "$LONG") || fail "$where: the long title is not shown"
-  short=$(python3 "$HERE/ui.py" height "$OUT/ui.xml" "E2E flight home" 2>/dev/null || true)
-  [[ -z $short ]] && { list_show "E2E flight home"; short=$(dump && python3 "$HERE/ui.py" height "$OUT/ui.xml" "E2E flight home"); }
+  list_show "E2E flight home"
+  short=$(dump && python3 "$HERE/ui.py" height "$OUT/ui.xml" "E2E flight home") || fail "$where: the short title is not shown"
   ((long * 10 >= short * 17)) || fail "$where: the 60-character title is not wrapped onto more lines ($long px vs $short px)"
   list_show "$LONG"
   n=$(dump && python3 "$HERE/ui.py" cards "$OUT/ui.xml" -) || fail "$where: the long title's card is cut: $n"

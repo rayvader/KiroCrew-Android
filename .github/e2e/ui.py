@@ -14,6 +14,7 @@
   ui.py rows   DUMP -          Froyo list lines on screen, top to bottom: "y day|card TEXT"
   ui.py cards  DUMP -          cards fully in view; exit 1 when a title or Done chip is cut
   ui.py height DUMP TEXT       height in px of the node whose text equals TEXT
+  ui.py shown  DUMP TEXT       exit 0 when the card titled TEXT is wholly inside the list
 """
 import re
 import sys
@@ -186,6 +187,22 @@ def cards(path, _arg):
     return 0
 
 
+def shown(path, text):
+    """Exit 0 when the card titled TEXT is wholly inside the widget's list (not cut by its edge)."""
+    root = ET.parse(path).getroot()
+    lst = next((box(n) for n in root.iter("node") if _rid(n, "froyo_list")), None)
+    if not lst:
+        return 1
+    for card in root.iter("node"):
+        if not _rid(card, "froyo_item"):
+            continue
+        cb = box(card)
+        title = next((n for n in card.iter("node") if _rid(n, "froyo_title")), None)
+        if cb and title is not None and title.get("text", "") == text and _inside(cb, lst):
+            return 0
+    return 1
+
+
 def height(path, text):
     """Height in px of the node whose text equals TEXT."""
     for node in nodes(path):
@@ -230,4 +247,4 @@ if __name__ == "__main__":
     cmd, path, arg = sys.argv[1], sys.argv[2], sys.argv[3]
     sys.exit({"find": find, "menu": menu, "has": has, "switch": switch, "window": window, "jobs": jobs,
               "widget": widget, "top": top, "bounds": bounds, "rows": rows, "cards": cards,
-              "height": height}[cmd](path, arg))
+              "height": height, "shown": shown}[cmd](path, arg))
