@@ -1,65 +1,75 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- One Froyo item. The fixed 28sp height is core/Upcoming.ROW_SP: it grows with the font
-     scale, so a row's text is never cut, and the list can snap to whole rows. -->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/froyo_item"
+<!-- One Froyo item: a rounded card in its type's color (set from code), full width.
+     The title wraps to as many lines as it needs: never cut or ellipsized. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="28sp"
-    android:gravity="center_vertical"
-    android:orientation="horizontal">
+    android:layout_height="wrap_content"
+    android:paddingBottom="5dp">
 
-    <TextView
-        android:id="@+id/froyo_icon"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:id="@+id/froyo_item"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:importantForAccessibility="no"
-        android:maxLines="1"
-        android:textColor="@color/widget_text"
-        android:textSize="13sp" />
-
-    <TextView
-        android:id="@+id/froyo_due"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="6dp"
-        android:maxLines="1"
-        android:textColor="@color/widget_muted"
-        android:textSize="12sp"
-        android:textStyle="bold" />
-
-    <TextView
-        android:id="@+id/froyo_title"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="6dp"
-        android:layout_weight="1"
-        android:ellipsize="end"
-        android:maxLines="1"
-        android:textColor="@color/widget_text"
-        android:textSize="13sp" />
-
-    <TextView
-        android:id="@+id/froyo_row_count"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="4dp"
-        android:maxLines="1"
-        android:textColor="@color/widget_muted"
-        android:textSize="12sp"
-        android:visibility="gone" />
-
-    <TextView
-        android:id="@+id/froyo_done"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="6dp"
-        android:background="@drawable/widget_chip_bg"
-        android:maxLines="1"
-        android:paddingStart="8dp"
-        android:paddingTop="2dp"
+        android:background="@drawable/widget_card_event"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="10dp"
+        android:paddingTop="6dp"
         android:paddingEnd="8dp"
-        android:paddingBottom="2dp"
-        android:text="@string/froyo_done"
-        android:textColor="@color/widget_text"
-        android:textSize="12sp" />
-</LinearLayout>
+        android:paddingBottom="7dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/froyo_time"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#FFFFFF"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/froyo_icon"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="6dp"
+                    android:importantForAccessibility="no"
+                    android:textColor="#FFFFFF"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:id="@+id/froyo_title"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:textColor="#FFFFFF"
+                    android:textSize="14sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/froyo_done"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/widget_card_chip"
+            android:maxLines="1"
+            android:paddingStart="10dp"
+            android:paddingTop="3dp"
+            android:paddingEnd="10dp"
+            android:paddingBottom="3dp"
+            android:text="@string/froyo_done"
+            android:textColor="@color/widget_tone_event"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+</FrameLayout>

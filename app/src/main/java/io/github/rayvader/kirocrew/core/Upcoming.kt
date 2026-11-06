@@ -26,13 +26,6 @@ data class UpcomingItem(
 /** How soon an item is due. */
 enum class DueState { NONE, LATER, SOON, LATE }
 
-/**
- * How the widget lays out at one size. Every item is in the scrolling list; [rows] is how
- * many whole rows the list shows at rest, and [listHeightDp] is its height, snapped to whole
- * rows so none is cut at rest. [header] is false when only one row fits with no room for the
- * header (4x1); the count then goes on the first row so it is not lost.
- */
-data class WidgetFit(val rows: Int, val header: Boolean, val listHeightDp: Float)
 
 /** What the header says after the count: when the list was read, or that it is being read. */
 enum class SyncNote { NONE, UPDATED, AS_OF, UPDATING }
@@ -241,33 +234,6 @@ object Upcoming {
         "security" -> "🔐"
         else -> "•"
     }
-
-    // Fixed sizes from widget_froyo.xml and widget_froyo_item.xml. The header and each row
-    // have a fixed height in sp, so they grow with the font scale exactly; the padding is dp.
-    // Change both together.
-    private const val PAD_DP = 12f
-    const val HEADER_SP = 22f
-    const val ROW_SP = 28f
-
-    fun headerHeight(fontScale: Float): Float = HEADER_SP * fontScale
-
-    fun rowHeight(fontScale: Float): Float = ROW_SP * fontScale
-
-    /**
-     * The layout at [heightDp] and [fontScale]: the header, then a list of as many whole rows
-     * as fit. The list scrolls through every item, so none is left out. Too short for the
-     * header and a row: one row, no header.
-     */
-    fun fit(heightDp: Float, fontScale: Float): WidgetFit {
-        val scale = if (fontScale > 0f) fontScale else 1f
-        val withHeader = ((heightDp - PAD_DP - headerHeight(scale)) / rowHeight(scale)).toInt()
-        if (withHeader >= 1) return WidgetFit(withHeader, header = true, listHeightDp = withHeader * rowHeight(scale))
-        return WidgetFit(1, header = false, listHeightDp = rowHeight(scale))
-    }
-
-    /** Height the header and the list take, for checks that nothing sticks out. */
-    fun used(fit: WidgetFit, fontScale: Float): Float =
-        PAD_DP + (if (fit.header) headerHeight(fontScale) else 0f) + fit.listHeightDp
 
     /** A tap on the refresh button counts as running for at most this long, so a lost run never spins forever. */
     const val REFRESH_SPIN_MS = 2L * 60 * 1000

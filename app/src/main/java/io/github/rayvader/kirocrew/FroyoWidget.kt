@@ -6,10 +6,13 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.content.res.Configuration
+import android.graphics.Typeface
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.style.StyleSpan
 import android.util.TypedValue
 import android.view.View
 import android.widget.RemoteViews
@@ -26,10 +29,13 @@ import androidx.work.WorkManager
 import androidx.work.Worker
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
-import io.github.rayvader.kirocrew.core.DueState
+import io.github.rayvader.kirocrew.core.AutoText
+import io.github.rayvader.kirocrew.core.DayRow
 import io.github.rayvader.kirocrew.core.FailReason
 import io.github.rayvader.kirocrew.core.Profile
 import io.github.rayvader.kirocrew.core.SyncNote
+import io.github.rayvader.kirocrew.core.Tone
+import io.github.rayvader.kirocrew.core.UpcomingDays
 import io.github.rayvader.kirocrew.core.Upcoming
 import io.github.rayvader.kirocrew.core.UpcomingItem
 import android.util.Log
@@ -296,10 +302,6 @@ object FroyoWidgets {
         manager.notifyAppWidgetViewDataChanged(ids, R.id.froyo_list)
     }
 
-    /** True when the widget [id] is tall enough for the header (not 4x1). */
-    fun headerShown(ctx: Context, id: Int): Boolean =
-        Upcoming.fit(heightDp(ctx, AppWidgetManager.getInstance(ctx).getAppWidgetOptions(id)), ctx.resources.configuration.fontScale).header
-
     private fun views(
         ctx: Context,
         id: Int,
@@ -310,8 +312,11 @@ object FroyoWidgets {
         at: Long,
     ): RemoteViews {
         val v = RemoteViews(ctx.packageName, R.layout.widget_froyo)
-        val fit = Upcoming.fit(heightDp(ctx, options), ctx.resources.configuration.fontScale)
         val profile = profile(ctx)
+        val scale = textScale(ctx)
+        v.setTextViewTextSize(R.id.froyo_name, TypedValue.COMPLEX_UNIT_SP, 14f * scale)
+        v.setTextViewTextSize(R.id.froyo_count, TypedValue.COMPLEX_UNIT_SP, 12f * scale)
+        v.setTextViewTextSize(R.id.froyo_message, TypedValue.COMPLEX_UNIT_SP, 13f * scale)
         v.setOnClickPendingIntent(R.id.froyo_root, openApp(ctx, profile, Upcoming.chatPagePath(slotKey(ctx)), 0))
 
         // Header: name and count, then "Updated HH:mm" after a good read, "as of HH:mm" after a
@@ -327,7 +332,6 @@ object FroyoWidgets {
             SyncNote.UPDATING -> ctx.getString(R.string.froyo_updating_count, open)
             SyncNote.NONE -> open
         }
-        v.setViewVisibility(R.id.froyo_header, if (fit.header) View.VISIBLE else View.GONE)
         v.setTextViewText(R.id.froyo_count, count)
         v.setViewVisibility(R.id.froyo_refresh, if (refreshing) View.GONE else View.VISIBLE)
         v.setViewVisibility(R.id.froyo_spinner, if (refreshing) View.VISIBLE else View.GONE)
@@ -345,47 +349,75 @@ object FroyoWidgets {
         v.setViewVisibility(R.id.froyo_message, if (message != null) View.VISIBLE else View.GONE)
         v.setTextViewText(R.id.froyo_message, message ?: "")
 
-        // Every item, in a list that scrolls. Rows come from FroyoWidgetService; their taps
-        // fill in this one template (Android allows one per list).
-        val adapter = Intent(ctx, FroyoWidgetService::class.java)
-            .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id)
-        adapter.data = Uri.parse(adapter.toUri(Intent.URI_INTENT_SCHEME))
-        @Suppress("DEPRECATION")
-        v.setRemoteAdapter(R.id.froyo_list, adapter)
+        // Every item, in one list that scrolls: a header per day, then that day's cards. Taps
+        // fill in this one template (Android allows one per list): a card opens the app, its
+        // Done chip asks to mark it done.
         v.setPendingIntentTemplate(R.id.froyo_list, tapTemplate(ctx))
         v.setViewVisibility(R.id.froyo_list, if (items.isEmpty()) View.GONE else View.VISIBLE)
         if (Build.VERSION.SDK_INT >= 31) {
-            // Snap the list to whole rows, so no row is cut at rest. Older Android fills the space.
-            v.setViewLayoutHeight(R.id.froyo_list, fit.listHeightDp, TypedValue.COMPLEX_UNIT_DIP)
+            val rows = dayRows(items)
+            val builder = RemoteViews.RemoteCollectionItems.Builder()
+                .setViewTypeCount(VIEW_TYPES)
+                .setHasStableIds(false)
+            rows.forEachIndexed { i, row -> builder.addItem(i.toLong(), rowViews(ctx, row, scale)) }
+            v.setRemoteAdapter(R.id.froyo_list, builder.build())
+        } else {
+            val adapter = Intent(ctx, FroyoWidgetService::class.java)
+                .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id)
+            adapter.data = Uri.parse(adapter.toUri(Intent.URI_INTENT_SCHEME))
+            @Suppress("DEPRECATION")
+            v.setRemoteAdapter(R.id.froyo_list, adapter)
         }
         return v
     }
 
-    /** One row, for the list. */
-    fun rowViews(ctx: Context, item: UpcomingItem, position: Int, total: Int, header: Boolean): RemoteViews {
+    /** Day headers and cards for [items], in the phone's time and language. */
+    fun dayRows(items: List<UpcomingItem>): List<DayRow> =
+        UpcomingDays.rows(items, LocalDateTime.now(), Locale.getDefault())
+
+    /** A day header and an item card: the two kinds of line in the list. */
+    const val VIEW_TYPES = 2
+
+    /**
+     * The widget follows the app's Auto text size (bigger when folded) on top of the system
+     * font size, which sp already includes.
+     */
+    fun textScale(ctx: Context): Float {
+        if (!Prefs(ctx).autoTextSize) return 1f
+        return AutoText.percent(ctx.resources.configuration.smallestScreenWidthDp) / 100f
+    }
+
+    /** One line of the list: a day header, or an item card. */
+    fun rowViews(ctx: Context, row: DayRow, scale: Float): RemoteViews = when (row) {
+        is DayRow.Header -> {
+            val v = RemoteViews(ctx.packageName, R.layout.widget_froyo_day)
+            val text = SpannableString(row.label)
+            if (row.today) text.setSpan(StyleSpan(Typeface.BOLD), 0, text.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            v.setTextViewText(R.id.froyo_day, text)
+            v.setTextColor(
+                R.id.froyo_day,
+                ContextCompat.getColor(ctx, if (row.today) R.color.widget_day_today else R.color.widget_day_other),
+            )
+            v.setTextViewTextSize(R.id.froyo_day, TypedValue.COMPLEX_UNIT_SP, 12f * scale)
+            v
+        }
+        is DayRow.Card -> cardViews(ctx, row, scale)
+    }
+
+    private fun cardViews(ctx: Context, row: DayRow.Card, scale: Float): RemoteViews {
         val v = RemoteViews(ctx.packageName, R.layout.widget_froyo_item)
-        val now = LocalDateTime.now()
+        val item = row.item
+        v.setInt(R.id.froyo_item, "setBackgroundResource", cardBackground(row.tone))
+        v.setTextColor(R.id.froyo_done, ContextCompat.getColor(ctx, toneColor(row.tone)))
+        v.setTextViewText(R.id.froyo_time, row.timeLine)
+        v.setViewVisibility(R.id.froyo_time, if (row.timeLine.isEmpty()) View.GONE else View.VISIBLE)
         v.setTextViewText(R.id.froyo_icon, Upcoming.icon(item.kind))
-        val due = Upcoming.dueText(item, now, Locale.getDefault())
-        v.setTextViewText(R.id.froyo_due, due)
-        v.setViewVisibility(R.id.froyo_due, if (due.isEmpty()) View.GONE else View.VISIBLE)
-        v.setTextColor(
-            R.id.froyo_due,
-            ContextCompat.getColor(
-                ctx,
-                when (Upcoming.state(item, now)) {
-                    DueState.LATE -> R.color.widget_late
-                    DueState.SOON -> R.color.widget_soon
-                    else -> R.color.widget_muted
-                },
-            ),
-        )
         v.setTextViewText(R.id.froyo_title, item.title)
-        // No header (4x1): the count goes on the first row so it is not lost.
-        val showCount = !header && position == 0
-        v.setViewVisibility(R.id.froyo_row_count, if (showCount) View.VISIBLE else View.GONE)
-        v.setTextViewText(R.id.froyo_row_count, ctx.getString(R.string.froyo_open, total))
-        v.setContentDescription(R.id.froyo_item, ctx.getString(R.string.froyo_row_desc, item.title, due))
+        v.setTextViewTextSize(R.id.froyo_time, TypedValue.COMPLEX_UNIT_SP, 11f * scale)
+        v.setTextViewTextSize(R.id.froyo_icon, TypedValue.COMPLEX_UNIT_SP, 14f * scale)
+        v.setTextViewTextSize(R.id.froyo_title, TypedValue.COMPLEX_UNIT_SP, 14f * scale)
+        v.setTextViewTextSize(R.id.froyo_done, TypedValue.COMPLEX_UNIT_SP, 12f * scale)
+        v.setContentDescription(R.id.froyo_item, ctx.getString(R.string.froyo_row_desc, item.title, row.timeLine))
         v.setOnClickFillInIntent(
             R.id.froyo_item,
             Intent().putExtra(FroyoDoneActivity.EXTRA_OPEN_PATH, Upcoming.chatPagePath(slotKey(ctx)))
@@ -396,16 +428,24 @@ object FroyoWidgets {
         return v
     }
 
-    /** The widget's height in dp: the portrait height on a phone held upright, else the landscape one. */
-    private fun heightDp(ctx: Context, options: Bundle): Float {
-        val portrait = ctx.resources.configuration.orientation != Configuration.ORIENTATION_LANDSCAPE
-        val max = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 0)
-        val min = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 0)
-        val h = if (portrait) max else min
-        return (if (h > 0) h else if (min > 0) min else DEFAULT_HEIGHT_DP).toFloat()
+    private fun cardBackground(tone: Tone): Int = when (tone) {
+        Tone.LATE -> R.drawable.widget_card_late
+        Tone.EVENT -> R.drawable.widget_card_event
+        Tone.FLIGHT -> R.drawable.widget_card_flight
+        Tone.DEADLINE -> R.drawable.widget_card_deadline
+        Tone.BILL -> R.drawable.widget_card_bill
+        Tone.OTHER -> R.drawable.widget_card_other
     }
 
-    private const val DEFAULT_HEIGHT_DP = 110
+    private fun toneColor(tone: Tone): Int = when (tone) {
+        Tone.LATE -> R.color.widget_tone_late
+        Tone.EVENT -> R.color.widget_tone_event
+        Tone.FLIGHT -> R.color.widget_tone_flight
+        Tone.DEADLINE -> R.color.widget_tone_deadline
+        Tone.BILL -> R.color.widget_tone_bill
+        Tone.OTHER -> R.color.widget_tone_other
+    }
+
 
     private fun openApp(ctx: Context, profile: Profile?, path: String, code: Int): PendingIntent {
         val intent = Intent(ctx, MainActivity::class.java)
@@ -550,33 +590,32 @@ class FroyoWidgetService : RemoteViewsService() {
 }
 
 class FroyoListFactory(private val ctx: Context, private val widgetId: Int) : RemoteViewsService.RemoteViewsFactory {
-    @Volatile private var items: List<UpcomingItem> = emptyList()
-    @Volatile private var header = true
+    @Volatile private var rows: List<DayRow> = emptyList()
+    @Volatile private var scale = 1f
 
     override fun onCreate() = Unit
 
     override fun onDataSetChanged() {
-        items = FroyoWidgets.visibleItems(ctx).second
-        header = FroyoWidgets.headerShown(ctx, widgetId)
+        rows = FroyoWidgets.dayRows(FroyoWidgets.visibleItems(ctx).second)
+        scale = FroyoWidgets.textScale(ctx)
     }
 
     override fun onDestroy() {
-        items = emptyList()
+        rows = emptyList()
     }
 
-    override fun getCount(): Int = items.size
+    override fun getCount(): Int = rows.size
 
     override fun getViewAt(position: Int): RemoteViews {
-        val list = items
-        val item = list.getOrNull(position) ?: return RemoteViews(ctx.packageName, R.layout.widget_froyo_item)
-        return FroyoWidgets.rowViews(ctx, item, position, list.size, header)
+        val row = rows.getOrNull(position) ?: return RemoteViews(ctx.packageName, R.layout.widget_froyo_day)
+        return FroyoWidgets.rowViews(ctx, row, scale)
     }
 
     override fun getLoadingView(): RemoteViews? = null
 
-    override fun getViewTypeCount(): Int = 1
+    override fun getViewTypeCount(): Int = FroyoWidgets.VIEW_TYPES
 
-    override fun getItemId(position: Int): Long = items.getOrNull(position)?.title?.hashCode()?.toLong() ?: position.toLong()
+    override fun getItemId(position: Int): Long = position.toLong()
 
-    override fun hasStableIds(): Boolean = true
+    override fun hasStableIds(): Boolean = false
 }

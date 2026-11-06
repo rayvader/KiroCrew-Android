@@ -169,6 +169,26 @@ FROYO_SLOT = "member-froyo-e2e"
 FROYO_MEMBER = "Froyo E2E"
 
 
+# 60 characters, made up: the widget must wrap it fully, never cut it.
+LONG_TITLE = "E2E made-up title that is sixty characters long, to wrap ok."
+
+
+def froyo_days():
+    """Made-up items across days, for the day-header layout: late, today (all day and timed),
+    tomorrow, two later days, next year, and one with no date."""
+    today = date.today()
+    d = lambda n: (today + timedelta(days=n)).isoformat()
+    return [
+        {"n": 1, "title": "E2E late parcel", "due": d(-2), "kind": "delivery", "flag": None},
+        {"n": 2, "title": "E2E all-day errand", "due": d(0), "kind": "booking", "flag": None},
+        {"n": 3, "title": "E2E flight home", "due": d(1) + " 14:10", "kind": "flight", "flag": None},
+        {"n": 4, "title": LONG_TITLE, "due": d(2), "kind": "bill", "flag": None},
+        {"n": 5, "title": "E2E form deadline", "due": d(3) + " 09:30", "kind": "deadline", "flag": None},
+        {"n": 6, "title": "E2E next year trip", "due": date(today.year + 1, 1, 15).isoformat(), "kind": "flight", "flag": None},
+        {"n": 7, "title": "E2E renewal no date", "due": None, "kind": "bill", "flag": None},
+    ]
+
+
 def froyo_items(many=False):
     """Made-up items, dated from today: one late, one today, two later, one with no date.
     many=True adds three more, so the widget's list has to scroll."""
@@ -308,7 +328,8 @@ def make_handler(state):
                     state.gw_update = {"latest": q.get("latest", ""), "status": q.get("status", "succeeded")}
                 return self.send(200, "ok")
             if p == "/test/froyo":
-                # mode=reset (the made-up list), many (8 items, more than fit), empty,
+                # mode=reset (the made-up list), many (8 items, more than fit), days (spread over
+                # days, with a 60-character title), empty,
                 # down (503) or bad (200, no list): reads fail and the list is kept; any other
                 # mode brings it back up.
                 mode = q.get("mode")
@@ -316,7 +337,8 @@ def make_handler(state):
                     state.froyo_down = mode == "down"
                     state.froyo_bad = mode == "bad"
                     if mode not in ("down", "bad"):
-                        state.froyo = [] if mode == "empty" else froyo_items(many=mode == "many")
+                        state.froyo = ([] if mode == "empty" else froyo_days() if mode == "days"
+                                       else froyo_items(many=mode == "many"))
                         state.chats = []
                 return self.send(200, "ok")
             if p == "/test/chats":

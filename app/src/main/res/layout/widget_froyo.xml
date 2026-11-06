@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- "Froyo · Upcoming": a fixed header and a scrolling list of every open item
-     (rows: widget_froyo_item.xml). Sizes here are the ones core/Upcoming.fit counts with:
-     6 dp padding top and bottom, a 22sp header, 28sp rows. Change both together. -->
+<!-- "Froyo · Upcoming": a fixed header, then one scrolling list of day headers
+     (widget_froyo_day.xml) and item cards (widget_froyo_item.xml), in the Google Calendar style. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/froyo_root"
     android:layout_width="match_parent"
@@ -16,7 +15,9 @@
     <LinearLayout
         android:id="@+id/froyo_header"
         android:layout_width="match_parent"
-        android:layout_height="22sp"
+        android:layout_height="wrap_content"
+        android:minHeight="22sp"
+        android:layout_marginBottom="2dp"
         android:gravity="center_vertical"
         android:orientation="horizontal">
 

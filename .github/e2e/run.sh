@@ -936,6 +936,70 @@ widget_rows() {
 }
 top_of() { dump && python3 "$HERE/ui.py" top "$OUT/ui.xml" "$1"; }
 
+# Swipe the widget's list by about half its height: up (to later items) or down.
+list_swipe() {
+  local x1 y1 x2 y2 x
+  read -r x1 y1 x2 y2 < <(dump && python3 "$HERE/ui.py" bounds "$OUT/ui.xml" froyo_list) || return 1
+  x=$(((x1 + x2) / 2))
+  if [[ $1 == up ]]; then
+    adb shell input swipe "$x" $((y2 - 15)) "$x" $(((y1 + y2) / 2)) 500
+  else
+    adb shell input swipe "$x" $((y1 + 15)) "$x" $((y2 - 15)) 300
+  fi
+  sleep 1.5
+}
+list_top() { local i; for i in 1 2 3 4 5 6; do list_swipe down || return 1; done; }
+# Scroll the list until TEXT is on screen.
+list_show() {
+  local i
+  has_text "$1" && return 0
+  for i in $(seq 1 10); do list_swipe up || break; has_text "$1" && return 0; done
+  list_top
+  has_text "$1" || fail "not in the widget's list, even after scrolling: $1"
+}
+# Walk the whole list from the top: check every card in view (title and Done chip whole), and
+# print each line once, in list order, to $OUT/list.txt.
+list_walk() {
+  local i before after n
+  list_top
+  : > "$OUT/list.txt"
+  for i in $(seq 1 14); do
+    dump || return 1
+    n=$(python3 "$HERE/ui.py" cards "$OUT/ui.xml" -) || { cp "$OUT/ui.xml" "$OUT/logs/$FEATURE_ID-cut-ui.xml"; fail "a card is cut: $n"; return 1; }
+    before=$(wc -l < "$OUT/list.txt")
+    python3 "$HERE/ui.py" rows "$OUT/ui.xml" - | cut -d' ' -f2- | while read -r line; do
+      grep -qxF "$line" "$OUT/list.txt" || echo "$line" >> "$OUT/list.txt"
+    done
+    after=$(wc -l < "$OUT/list.txt")
+    ((i > 1 && after == before)) && break
+    list_swipe up || return 1
+  done
+  list_top
+}
+# The line number of the first list line containing TEXT, from list_walk.
+line_of() { grep -nF -- "$1" "$OUT/list.txt" | head -1 | cut -d: -f1; }
+
+# The day-header checks, at the screen size and text size in force.
+days_check() {
+  local where=$1 a b c d e f long short
+  list_walk
+  cp "$OUT/list.txt" "$OUT/logs/$FEATURE_ID-list-$where.txt"
+  a=$(line_of "day Today ·"); b=$(line_of "day Tomorrow ·"); c=$(line_of "$((THIS_YEAR + 1))")
+  d=$(line_of "day No date"); e=$(line_of "card E2E renewal no date"); f=$(line_of "card E2E late parcel")
+  [[ -n $a && -n $b && -n $c && -n $d && -n $e && -n $f ]] || fail "$where: a header or the last item is missing: $(tr '\n' '|' < "$OUT/list.txt")"
+  ((a < f && f < b && b < c && c < d && d < e)) || fail "$where: headers out of order ($a $f $b $c $d $e)"
+  check "$where: headers in order (Today with the late item, Tomorrow, later, next year, No date last); every card whole, Done visible; scrolling reaches the last item"
+  list_show "$LONG"
+  long=$(dump && python3 "$HERE/ui.py" height "$OUT/ui.xml" "$LONG") || fail "$where: the long title is not shown"
+  short=$(python3 "$HERE/ui.py" height "$OUT/ui.xml" "E2E flight home" 2>/dev/null || true)
+  [[ -z $short ]] && { list_show "E2E flight home"; short=$(dump && python3 "$HERE/ui.py" height "$OUT/ui.xml" "E2E flight home"); }
+  ((long * 10 >= short * 17)) || fail "$where: the 60-character title is not wrapped onto more lines ($long px vs $short px)"
+  list_show "$LONG"
+  n=$(dump && python3 "$HERE/ui.py" cards "$OUT/ui.xml" -) || fail "$where: the long title's card is cut: $n"
+  check "$where: the 60-character title wraps fully and is not cut"
+  list_top
+}
+
 # Home, then the page that holds the widget. Home pressed on the launcher jumps to its
 # first page, and the launcher may have put the widget on another one.
 widget_home() {
@@ -975,25 +1039,29 @@ f_froyo_widget() {
   has_text "late" || fail "the overdue item is not marked late"
   check "an overdue item says late"
   local a b c rows
-  a=$(top_of "E2E test parcel") && b=$(top_of "E2E test dinner") && c=$(top_of "E2E test flight") \
-    || fail "the first three items are not all shown"
+  list_walk
+  a=$(line_of "E2E test parcel"); b=$(line_of "E2E test dinner"); c=$(line_of "E2E test flight")
+  [[ -n $a && -n $b && -n $c ]] || fail "the first three items are not all in the list"
   ((a < b && b < c)) || fail "items are not soonest first ($a $b $c)"
   check "items are soonest first"
-  rows=$(widget_rows) || fail "widget rows overlap: $rows"
-  # The emulator's 4x2 is tall enough for all 5.
-  ((rows == 5)) || fail "the widget shows $rows of 5 items with room to spare"
-  has_text "E2E test renewal" || fail "the fifth item is not shown"
+  grep -q "day Today ·" "$OUT/list.txt" || fail "no Today header"
+  check "the list has day headers"
+  rows=$(widget_rows) || fail "widget cards overlap: $rows"
+  ((rows >= 2)) || fail "only $rows cards show at the default size"
+  grep -qF "card E2E test renewal" "$OUT/list.txt" || fail "the fifth item is not in the list"
   ! has_text "more" || fail "a '+N more' line shows; the list should hold every item"
-  check "every item shows when the height has room (5 of 5), none overlapping"
+  check "every item is in the list, $rows cards in view at once, none overlapping"
   adb exec-out screencap -p > "$OUT/shots/froyo-widget.png" 2>/dev/null || true
 
-  # Tap a row: the app opens on Froyo's chat.
+  # Tap a card: the app opens on Froyo's chat.
+  list_show "E2E test flight"
   tap_now "E2E test flight"
   page_path /chat 30
   check "a row opens the app on Froyo's chat"
   widget_home
 
   # Done asks first; Cancel changes nothing.
+  list_top
   wait_text "E2E test parcel" 20
   tap_now "Mark E2E test parcel done"
   wait_text 'Mark "E2E test parcel" done?' 15
@@ -1091,12 +1159,13 @@ d = (m(sys.argv[2]) - m(sys.argv[1])) % 1440
 sys.exit(0 if d <= 2 else 1)
 PY
   check "the refresh button reads the list now and says 'Updated HH:mm' (24 h)"
-  rows=$(widget_rows) || fail "rows overlap with the Updated note: $rows"
-  ((rows == 5)) || fail "the Updated note cost a row: $rows of 5 show"
-  check "the note shares the header: all 5 rows still show"
+  rows=$(widget_rows) || fail "cards overlap with the Updated note: $rows"
+  ((rows >= 2)) || fail "only $rows cards show with the Updated note"
+  check "the note shares the header: $rows cards still in view"
   adb exec-out screencap -p > "$OUT/shots/froyo-widget-refresh.png" 2>/dev/null || true
 
   # A failed read keeps the rows and says "as of HH:mm".
+  list_top
   curl -s "$GW/test/froyo?mode=down" >/dev/null
   tap_now "Refresh"
   wait_text "5 open · as of" 30
@@ -1117,8 +1186,49 @@ PY
   wait_text "5 open · Updated" 30
   ! has_text "· network" || fail "the reason stayed after a good read"
   check "the next good read says Updated again"
-  ! has_text "E2E stale row" || fail "the lagging open_items field was shown instead of open_items_live"
+  list_walk
+  ! grep -qF "E2E stale row" "$OUT/list.txt" || fail "the lagging open_items field was shown instead of open_items_live"
   check "the live list (open_items_live) wins over the lagging open_items"
+
+  # Day headers, Google Calendar style, at 115% text: phone size, then unfolded size.
+  THIS_YEAR=$(adb shell date +%Y | tr -d '\r')
+  LONG="E2E made-up title that is sixty characters long, to wrap ok."
+  # Later features need the normal screen: put it back even when a check here fails.
+  trap 'adb shell settings put system font_scale 1.0; adb shell wm size reset; adb shell cmd uimode night no >/dev/null' EXIT
+  adb shell settings put system font_scale 1.15
+  curl -s "$GW/test/froyo?mode=days" >/dev/null
+  launch
+  widget_home
+  tap_now "Refresh"
+  wait_text "7 open · Updated" 30
+  sleep 3
+  days_check "phone, 115% text"
+  adb exec-out screencap -p > "$OUT/shots/froyo-days.png" 2>/dev/null || true
+  adb shell cmd uimode night yes >/dev/null
+  sleep 4
+  launch
+  widget_home
+  sleep 4
+  adb exec-out screencap -p > "$OUT/shots/froyo-days-dark.png" 2>/dev/null || true
+  adb shell cmd uimode night no >/dev/null
+  sleep 3
+
+  # Unfolded: a wide screen (smallest width over 600 dp) with the same 115% text.
+  adb shell wm size 1840x2208
+  sleep 6
+  launch
+  widget_home
+  tap_now "Refresh"
+  wait_text "7 open · Updated" 30
+  sleep 3
+  days_check "unfolded size, 115% text"
+  adb exec-out screencap -p > "$OUT/shots/froyo-days-unfolded.png" 2>/dev/null || true
+  adb shell wm size reset
+  adb shell settings put system font_scale 1.0
+  sleep 4
+  curl -s "$GW/test/froyo?mode=days" >/dev/null
+  launch
+  widget_home
   # Ends on the home screen for the screenshot.
 }
 

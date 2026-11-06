@@ -260,42 +260,6 @@ class UpcomingTest {
     }
 
     @Test
-    fun theSyncNoteSitsInTheHeaderSoNoRowIsLost() {
-        // Rows per height are unchanged by the note: it shares the header line.
-        assertEquals(3, Upcoming.fit(139f, 1f).rows)
-        assertEquals(3, Upcoming.fit(139f, 1.15f).rows)
-        assertEquals(2, Upcoming.fit(110f, 1.15f).rows)
-    }
-
-    @Test
-    fun listShowsWholeRowsAndScrollsTheRest() {
-        // Raymond's Wide on Smart Launcher is about 139 dp; the emulator's 4x2 is about 223 dp.
-        assertEquals(WidgetFit(3, true, 84f), Upcoming.fit(139f, 1f))
-        assertEquals(3, Upcoming.fit(139f, 1.15f).rows)
-        assertEquals(2, Upcoming.fit(110f, 1f).rows)
-        assertEquals(2, Upcoming.fit(110f, 1.15f).rows)
-        assertEquals(6, Upcoming.fit(223f, 1f).rows)
-        assertEquals(5, Upcoming.fit(223f, 1.15f).rows)
-        assertEquals(9, Upcoming.fit(300f, 1f).rows)
-        // 4x1: one row, no header.
-        assertEquals(WidgetFit(1, false, 28f), Upcoming.fit(50f, 1f))
-        // The list is snapped to whole rows, so no row is cut at rest.
-        assertEquals(Upcoming.fit(139f, 1.15f).rows * Upcoming.rowHeight(1.15f), Upcoming.fit(139f, 1.15f).listHeightDp, 0.001f)
-    }
-
-    @Test
-    fun listNeverSticksOut() {
-        val heights = (110..150).map { it.toFloat() } + listOf(139f, 223f, 300f, 600f)
-        for (scale in listOf(0.85f, 1f, 1.15f, 1.3f)) {
-            for (h in heights) {
-                val fit = Upcoming.fit(h, scale)
-                assertTrue("h=$h scale=$scale fit=$fit", Upcoming.used(fit, scale) <= h)
-                assertTrue("h=$h scale=$scale", fit.rows >= 1 && fit.header)
-            }
-        }
-    }
-
-    @Test
     fun noMoreLineEveryItemIsInTheList() {
         // The list holds every open item; nothing is counted away as "+N more".
         val items = (1..8).map { item("Item $it", "2026-11-%02d".format(4 + it)) }
