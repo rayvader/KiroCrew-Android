@@ -180,6 +180,18 @@ class UpcomingDaysTest {
     }
 
     @Test
+    fun aNarrowWidgetPutsTheCountUnderTheTitle() {
+        // Phone 4x2 (~348 dp) at 115 % text: one line. Unfolded 2-cell (~180 dp): stacked.
+        assertFalse(UpcomingDays.stackHeader(348f, 1.15f))
+        assertFalse(UpcomingDays.stackHeader(362f, 1.1f * 1.15f))
+        assertTrue(UpcomingDays.stackHeader(180f, 1.15f))
+        assertTrue(UpcomingDays.stackHeader(250f, 1f))
+        // Bigger text needs more width for one line.
+        assertTrue(UpcomingDays.stackHeader(320f, 1.3f))
+        assertFalse(UpcomingDays.stackHeader(0f, 1f))
+    }
+
+    @Test
     fun aLongTitleIsKeptWhole() {
         val long = "E2E made-up title that is sixty characters long, to wrap ok."
         assertEquals(60, long.length)

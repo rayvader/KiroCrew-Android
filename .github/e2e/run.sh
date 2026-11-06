@@ -970,24 +970,27 @@ list_show() {
 # Walk the whole list from the top: check every card in view (title and Done chip whole), and
 # print each line once, in list order, to $OUT/list.txt.
 list_walk() {
-  local i before after n
+  local i n view last=""
   list_top
   : > "$OUT/list.txt"
-  for i in $(seq 1 14); do
+  for i in $(seq 1 30); do
     dump || fail "no screen dump"
     n=$(python3 "$HERE/ui.py" cards "$OUT/ui.xml" -) || { cp "$OUT/ui.xml" "$OUT/logs/$FEATURE_ID-cut-ui.xml"; fail "a card is cut: $n"; return 1; }
-    before=$(wc -l < "$OUT/list.txt")
-    python3 "$HERE/ui.py" rows "$OUT/ui.xml" - | cut -d' ' -f2- | while read -r line; do
-      grep -qxF "$line" "$OUT/list.txt" || echo "$line" >> "$OUT/list.txt"
+    # What is on screen, with positions: the same twice means the list cannot scroll further.
+    # (A tall card can fill a whole swipe, so "no new line" alone is not the end.)
+    view=$(python3 "$HERE/ui.py" rows "$OUT/ui.xml" -)
+    printf '%s\n' "$view" | cut -d' ' -f2- | while read -r line; do
+      [[ -z $line ]] && continue
+      grep -qxF -- "$line" "$OUT/list.txt" || echo "$line" >> "$OUT/list.txt"
     done
-    after=$(wc -l < "$OUT/list.txt")
-    if ((i > 1 && after == before)); then break; fi
+    [[ $view == "$last" ]] && break
+    last=$view
     list_swipe up || fail "cannot scroll the widget's list"
   done
   list_top
 }
 # The line number of the first list line containing TEXT, from list_walk.
-line_of() { grep -nF -- "$1" "$OUT/list.txt" | head -1 | cut -d: -f1; }
+line_of() { { grep -nF -- "$1" "$OUT/list.txt" || true; } | head -1 | cut -d: -f1; }
 
 # The day-header checks, at the screen size and text size in force.
 days_check() {

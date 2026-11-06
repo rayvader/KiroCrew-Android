@@ -123,6 +123,19 @@ object UpcomingDays {
             late = Upcoming.state(item, now) == DueState.LATE,
         )
 
+    /**
+     * Below this width (dp, divided by the text scale) "Froyo · Upcoming" and the count do not
+     * both fit on one line, so the count moves to its own line under the title.
+     */
+    const val HEADER_ONE_LINE_DP = 290f
+
+    /** True when the header should put the count under the title. Unknown width: one line. */
+    fun stackHeader(widthDp: Float, textScale: Float): Boolean {
+        if (widthDp <= 0f) return false
+        val scale = if (textScale > 0f) textScale else 1f
+        return widthDp / scale < HEADER_ONE_LINE_DP
+    }
+
     /** WCAG contrast ratio of two opaque ARGB colors, 1.0 to 21.0. */
     fun contrast(a: Int, b: Int): Double {
         val la = luminance(a)

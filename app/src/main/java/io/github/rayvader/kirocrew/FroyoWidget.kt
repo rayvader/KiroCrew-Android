@@ -332,7 +332,14 @@ object FroyoWidgets {
             SyncNote.UPDATING -> ctx.getString(R.string.froyo_updating_count, open)
             SyncNote.NONE -> open
         }
-        v.setTextViewText(R.id.froyo_count, count)
+        // Narrow widget (an unfolded screen gives it fewer dp): the count under the title.
+        val widthDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 0).toFloat()
+        val stacked = UpcomingDays.stackHeader(widthDp, scale * ctx.resources.configuration.fontScale)
+        v.setTextViewText(R.id.froyo_count, if (stacked) "" else count)
+        v.setViewVisibility(R.id.froyo_count, if (stacked) View.GONE else View.VISIBLE)
+        v.setTextViewText(R.id.froyo_count_below, if (stacked) count else "")
+        v.setViewVisibility(R.id.froyo_count_below, if (stacked) View.VISIBLE else View.GONE)
+        v.setTextViewTextSize(R.id.froyo_count_below, TypedValue.COMPLEX_UNIT_SP, 12f * scale)
         v.setViewVisibility(R.id.froyo_refresh, if (refreshing) View.GONE else View.VISIBLE)
         v.setViewVisibility(R.id.froyo_spinner, if (refreshing) View.VISIBLE else View.GONE)
         v.setOnClickPendingIntent(R.id.froyo_refresh, refreshIntent(ctx))
