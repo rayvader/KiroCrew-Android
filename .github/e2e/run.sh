@@ -938,8 +938,15 @@ top_of() { dump && python3 "$HERE/ui.py" top "$OUT/ui.xml" "$1"; }
 
 # Swipe the widget's list by about half its height: up (to later items) or down.
 list_swipe() {
-  local x1 y1 x2 y2 x
-  read -r x1 y1 x2 y2 < <(dump && python3 "$HERE/ui.py" bounds "$OUT/ui.xml" froyo_list) || return 1
+  local x1="" y1 y2 x2 x i
+  # A big screen's dump can come back without the list for a moment: try a few times.
+  for i in 1 2 3 4 5; do
+    read -r x1 y1 x2 y2 < <(dump && python3 "$HERE/ui.py" bounds "$OUT/ui.xml" froyo_list) && break
+    x1=""
+    dismiss_anr
+    sleep 1.5
+  done
+  [[ -n $x1 ]] || { cp "$OUT/ui.xml" "$OUT/logs/$FEATURE_ID-nolist-ui.xml" 2>/dev/null; fail "the widget's list is not on screen"; return 1; }
   x=$(((x1 + x2) / 2))
   if [[ $1 == up ]]; then
     adb shell input swipe "$x" $((y2 - 15)) "$x" $(((y1 + y2) / 2)) 500
@@ -948,7 +955,7 @@ list_swipe() {
   fi
   sleep 1.5
 }
-list_top() { local i; for i in 1 2 3 4 5 6; do list_swipe down || return 1; done; }
+list_top() { local i; for i in 1 2 3 4 5 6; do list_swipe down || fail "cannot scroll the widget's list"; done; }
 # Scroll the list until the card titled TEXT is wholly in view (a card cut by the list's
 # edge does not count: its title may be out of sight).
 card_shown() { dump && python3 "$HERE/ui.py" shown "$OUT/ui.xml" "$1"; }
@@ -967,15 +974,15 @@ list_walk() {
   list_top
   : > "$OUT/list.txt"
   for i in $(seq 1 14); do
-    dump || return 1
+    dump || fail "no screen dump"
     n=$(python3 "$HERE/ui.py" cards "$OUT/ui.xml" -) || { cp "$OUT/ui.xml" "$OUT/logs/$FEATURE_ID-cut-ui.xml"; fail "a card is cut: $n"; return 1; }
     before=$(wc -l < "$OUT/list.txt")
     python3 "$HERE/ui.py" rows "$OUT/ui.xml" - | cut -d' ' -f2- | while read -r line; do
       grep -qxF "$line" "$OUT/list.txt" || echo "$line" >> "$OUT/list.txt"
     done
     after=$(wc -l < "$OUT/list.txt")
-    ((i > 1 && after == before)) && break
-    list_swipe up || return 1
+    if ((i > 1 && after == before)); then break; fi
+    list_swipe up || fail "cannot scroll the widget's list"
   done
   list_top
 }
@@ -984,7 +991,11 @@ line_of() { grep -nF -- "$1" "$OUT/list.txt" | head -1 | cut -d: -f1; }
 
 # The day-header checks, at the screen size and text size in force.
 days_check() {
-  local where=$1 a b c d e f long short
+  local where=$1 a b c d e f long short name
+  name=$(dump && python3 "$HERE/ui.py" bounds "$OUT/ui.xml" froyo_name) || fail "$where: no header title"
+  read -r a b c d <<<"$name"
+  ((c - a >= 150)) || fail "$where: the header title is squeezed to $((c - a)) px"
+  check "$where: the header title 'Froyo · Upcoming' is not squeezed ($((c - a)) px wide)"
   list_walk
   cp "$OUT/list.txt" "$OUT/logs/$FEATURE_ID-list-$where.txt"
   a=$(line_of "day Today ·"); b=$(line_of "day Tomorrow ·"); c=$(line_of "$((THIS_YEAR + 1))")

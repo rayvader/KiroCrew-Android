@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- "Froyo · Upcoming": a fixed header, then one scrolling list of day headers
+<!-- "Froyo · Upcoming": a fixed header (title and count share its width and wrap, so a
+     narrow widget never cuts either), then one scrolling list of day headers
      (widget_froyo_day.xml) and item cards (widget_froyo_item.xml), in the Google Calendar style. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/froyo_root"
@@ -14,6 +15,7 @@
 
     <LinearLayout
         android:id="@+id/froyo_header"
+        android:baselineAligned="false"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:minHeight="22sp"
@@ -26,8 +28,6 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:ellipsize="end"
-            android:maxLines="1"
             android:text="@string/froyo_widget_title"
             android:textColor="@color/widget_text"
             android:textSize="14sp"
@@ -35,10 +35,11 @@
 
         <TextView
             android:id="@+id/froyo_count"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
-            android:maxLines="1"
+            android:layout_weight="1"
+            android:gravity="end"
             android:textColor="@color/widget_muted"
             android:textSize="12sp" />
 
@@ -70,8 +71,6 @@
         android:id="@+id/froyo_message"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:ellipsize="end"
-        android:maxLines="2"
         android:textColor="@color/widget_muted"
         android:textSize="13sp"
         android:visibility="gone" />
