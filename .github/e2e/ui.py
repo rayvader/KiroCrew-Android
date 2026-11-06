@@ -230,20 +230,19 @@ def top_shown(path, text):
 
 
 def lines(path, text):
-    """How many lines the card titled TEXT takes: its title's height over its time line's
-    height (one line, smaller text), rounded down. Exit 1 when not found."""
-    for card in nodes(path):
-        if not _rid(card, "froyo_item"):
-            continue
-        title = next((n for n in card.iter("node") if _rid(n, "froyo_title")), None)
-        time = next((n for n in card.iter("node") if _rid(n, "froyo_time")), None)
-        if title is None or time is None or title.get("text", "") != text:
-            continue
-        tb, mb = box(title), box(time)
-        if tb and mb and mb[3] > mb[1]:
-            print(int((tb[3] - tb[1]) / (mb[3] - mb[1])))
-            return 0
-    return 1
+    """About how many lines of the title TEXT are on screen: its visible height over the
+    header title's height (same 14sp text, one line, always on screen). 0 when not shown."""
+    ref = next((box(n) for n in nodes(path) if _rid(n, "froyo_name")), None)
+    if not ref or ref[3] <= ref[1]:
+        return 1
+    for n in nodes(path):
+        if _rid(n, "froyo_title") and n.get("text", "") == text:
+            b = box(n)
+            if b:
+                print(round((b[3] - b[1]) / (ref[3] - ref[1])))
+                return 0
+    print(0)
+    return 0
 
 
 def height(path, text):

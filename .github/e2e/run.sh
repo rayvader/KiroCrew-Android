@@ -1016,11 +1016,18 @@ days_check() {
   [[ -n $a && -n $b && -n $c && -n $d && -n $e && -n $f ]] || fail "$where: a header or the last item is missing: $(tr '\n' '|' < "$OUT/list.txt")"
   ((a < f && f < b && b < c && c < d && d < e)) || fail "$where: headers out of order ($a $f $b $c $d $e)"
   check "$where: headers in order (Today with the late item, Tomorrow, later, next year, No date last); every card whole, Done visible; scrolling reaches the last item"
-  # Its card's top in view. On a narrow widget the card can be taller than the list: the list
-  # then scrolls through it (list_walk above reached the items after it), and nothing is cut.
-  card_top "$LONG"
-  long=$(dump && python3 "$HERE/ui.py" lines "$OUT/ui.xml" "$LONG") || fail "$where: the long title is not shown"
-  ((long >= 2)) || fail "$where: the 60-character title is not wrapped (about $long line of time-line height)"
+  # The most of the title on screen at any point of a scroll through the list. On a narrow
+  # widget its card can be taller than the list; the list then scrolls through it (list_walk
+  # above reached the items after it), and nothing is cut.
+  local most=0 here i
+  list_top
+  for i in $(seq 1 14); do
+    here=$(dump && python3 "$HERE/ui.py" lines "$OUT/ui.xml" "$LONG") || here=0
+    ((here > most)) && most=$here
+    ((most >= 2)) && break
+    list_swipe up || break
+  done
+  ((most >= 2)) || fail "$where: the 60-character title is not wrapped (at most $most line seen)"
   n=$(python3 "$HERE/ui.py" cards "$OUT/ui.xml" -) || fail "$where: a card is cut: $n"
   check "$where: the 60-character title wraps fully and is not cut"
   list_top
