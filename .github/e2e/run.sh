@@ -1007,12 +1007,10 @@ days_check() {
   ((a < f && f < b && b < c && c < d && d < e)) || fail "$where: headers out of order ($a $f $b $c $d $e)"
   check "$where: headers in order (Today with the late item, Tomorrow, later, next year, No date last); every card whole, Done visible; scrolling reaches the last item"
   list_show "$LONG"
-  long=$(dump && python3 "$HERE/ui.py" height "$OUT/ui.xml" "$LONG") || fail "$where: the long title is not shown"
-  list_show "E2E flight home"
-  short=$(dump && python3 "$HERE/ui.py" height "$OUT/ui.xml" "E2E flight home") || fail "$where: the short title is not shown"
-  ((long * 10 >= short * 17)) || fail "$where: the 60-character title is not wrapped onto more lines ($long px vs $short px)"
-  list_show "$LONG"
-  n=$(dump && python3 "$HERE/ui.py" cards "$OUT/ui.xml" -) || fail "$where: the long title's card is cut: $n"
+  long=$(dump && python3 "$HERE/ui.py" lines "$OUT/ui.xml" "$LONG") || fail "$where: the long title is not shown"
+  # Two or more lines of title text (each a bit taller than the small time line).
+  ((long >= 2)) || fail "$where: the 60-character title is not wrapped (about $long line of time-line height)"
+  n=$(python3 "$HERE/ui.py" cards "$OUT/ui.xml" -) || fail "$where: the long title's card is cut: $n"
   check "$where: the 60-character title wraps fully and is not cut"
   list_top
 }

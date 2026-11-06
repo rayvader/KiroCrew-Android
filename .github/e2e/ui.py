@@ -15,6 +15,7 @@
   ui.py cards  DUMP -          cards fully in view; exit 1 when a title or Done chip is cut
   ui.py height DUMP TEXT       height in px of the node whose text equals TEXT
   ui.py shown  DUMP TEXT       exit 0 when the card titled TEXT is wholly inside the list
+  ui.py lines  DUMP TEXT       about how many lines the card titled TEXT takes
 """
 import re
 import sys
@@ -198,7 +199,28 @@ def shown(path, text):
             continue
         cb = box(card)
         title = next((n for n in card.iter("node") if _rid(n, "froyo_title")), None)
-        if cb and title is not None and title.get("text", "") == text and _inside(cb, lst):
+        if not cb or title is None or title.get("text", "") != text:
+            continue
+        # uiautomator crops a half-hidden card to what shows, so a card touching the list's
+        # top or bottom edge may be cut there: it does not count as wholly in view.
+        if _inside(cb, lst) and cb[1] > lst[1] + 1 and cb[3] < lst[3] - 1:
+            return 0
+    return 1
+
+
+def lines(path, text):
+    """How many lines the card titled TEXT takes: its title's height over its time line's
+    height (one line, smaller text), rounded down. Exit 1 when not found."""
+    for card in nodes(path):
+        if not _rid(card, "froyo_item"):
+            continue
+        title = next((n for n in card.iter("node") if _rid(n, "froyo_title")), None)
+        time = next((n for n in card.iter("node") if _rid(n, "froyo_time")), None)
+        if title is None or time is None or title.get("text", "") != text:
+            continue
+        tb, mb = box(title), box(time)
+        if tb and mb and mb[3] > mb[1]:
+            print(int((tb[3] - tb[1]) / (mb[3] - mb[1])))
             return 0
     return 1
 
@@ -247,4 +269,5 @@ if __name__ == "__main__":
     cmd, path, arg = sys.argv[1], sys.argv[2], sys.argv[3]
     sys.exit({"find": find, "menu": menu, "has": has, "switch": switch, "window": window, "jobs": jobs,
               "widget": widget, "top": top, "bounds": bounds, "rows": rows, "cards": cards,
-              "height": height, "shown": shown}[cmd](path, arg))
+              "height": height, "shown": shown,
+              "lines": lines}[cmd](path, arg))
