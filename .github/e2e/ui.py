@@ -16,6 +16,7 @@
   ui.py height DUMP TEXT       height in px of the node whose text equals TEXT
   ui.py shown  DUMP TEXT       exit 0 when the card titled TEXT is wholly inside the list
   ui.py lines  DUMP TEXT       about how many lines the card titled TEXT takes
+  ui.py top_shown DUMP TEXT    exit 0 when the top of the card titled TEXT is inside the list
 """
 import re
 import sys
@@ -208,6 +209,26 @@ def shown(path, text):
     return 1
 
 
+def top_shown(path, text):
+    """Exit 0 when the top of the card titled TEXT (its time line) is wholly inside the list.
+    For a card taller than the list, that is the most of it one screen can show."""
+    root = ET.parse(path).getroot()
+    lst = next((box(n) for n in root.iter("node") if _rid(n, "froyo_list")), None)
+    if not lst:
+        return 1
+    for card in root.iter("node"):
+        if not _rid(card, "froyo_item"):
+            continue
+        title = next((n for n in card.iter("node") if _rid(n, "froyo_title")), None)
+        time = next((n for n in card.iter("node") if _rid(n, "froyo_time")), None)
+        if title is None or time is None or title.get("text", "") != text:
+            continue
+        cb, tb = box(card), box(time)
+        if cb and tb and cb[1] > lst[1] + 1 and tb[3] - tb[1] > 5 and _inside(tb, lst):
+            return 0
+    return 1
+
+
 def lines(path, text):
     """How many lines the card titled TEXT takes: its title's height over its time line's
     height (one line, smaller text), rounded down. Exit 1 when not found."""
@@ -270,4 +291,4 @@ if __name__ == "__main__":
     sys.exit({"find": find, "menu": menu, "has": has, "switch": switch, "window": window, "jobs": jobs,
               "widget": widget, "top": top, "bounds": bounds, "rows": rows, "cards": cards,
               "height": height, "shown": shown,
-              "lines": lines}[cmd](path, arg))
+              "lines": lines, "top_shown": top_shown}[cmd](path, arg))

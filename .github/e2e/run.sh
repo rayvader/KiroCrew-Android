@@ -959,6 +959,16 @@ list_top() { local i; for i in 1 2 3 4 5 6; do list_swipe down || fail "cannot s
 # Scroll the list until the card titled TEXT is wholly in view (a card cut by the list's
 # edge does not count: its title may be out of sight).
 card_shown() { dump && python3 "$HERE/ui.py" shown "$OUT/ui.xml" "$1"; }
+# Scroll the list until the top of the card titled TEXT is in view.
+card_top() {
+  local i
+  list_top
+  for i in $(seq 1 12); do
+    dump && python3 "$HERE/ui.py" top_shown "$OUT/ui.xml" "$1" && return 0
+    list_swipe up || break
+  done
+  fail "the top of this card never comes into view: $1"
+}
 list_show() {
   local i
   card_shown "$1" && return 0
@@ -1006,11 +1016,12 @@ days_check() {
   [[ -n $a && -n $b && -n $c && -n $d && -n $e && -n $f ]] || fail "$where: a header or the last item is missing: $(tr '\n' '|' < "$OUT/list.txt")"
   ((a < f && f < b && b < c && c < d && d < e)) || fail "$where: headers out of order ($a $f $b $c $d $e)"
   check "$where: headers in order (Today with the late item, Tomorrow, later, next year, No date last); every card whole, Done visible; scrolling reaches the last item"
-  list_show "$LONG"
+  # Its card's top in view. On a narrow widget the card can be taller than the list: the list
+  # then scrolls through it (list_walk above reached the items after it), and nothing is cut.
+  card_top "$LONG"
   long=$(dump && python3 "$HERE/ui.py" lines "$OUT/ui.xml" "$LONG") || fail "$where: the long title is not shown"
-  # Two or more lines of title text (each a bit taller than the small time line).
   ((long >= 2)) || fail "$where: the 60-character title is not wrapped (about $long line of time-line height)"
-  n=$(python3 "$HERE/ui.py" cards "$OUT/ui.xml" -) || fail "$where: the long title's card is cut: $n"
+  n=$(python3 "$HERE/ui.py" cards "$OUT/ui.xml" -) || fail "$where: a card is cut: $n"
   check "$where: the 60-character title wraps fully and is not cut"
   list_top
 }
