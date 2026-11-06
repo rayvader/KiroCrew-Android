@@ -181,9 +181,11 @@ class UpcomingDaysTest {
 
     @Test
     fun aNarrowWidgetPutsTheCountUnderTheTitle() {
-        // Phone 4x2 (~348 dp) at 115 % text: one line. Unfolded 2-cell (~180 dp): stacked.
+        // Phone 4x2 (~348 dp) at 115 % text (348/1.15 = 302 >= 290): one line.
         assertFalse(UpcomingDays.stackHeader(348f, 1.15f))
-        assertFalse(UpcomingDays.stackHeader(362f, 1.1f * 1.15f))
+        assertFalse(UpcomingDays.stackHeader(362f, 1f))
+        // Unfolded, the launcher gives the widget few dp, or the app's folded 110 % piles on: stacked.
+        assertTrue(UpcomingDays.stackHeader(362f, 1.1f * 1.15f)) // 362/1.265 = 286 < 290
         assertTrue(UpcomingDays.stackHeader(180f, 1.15f))
         assertTrue(UpcomingDays.stackHeader(250f, 1f))
         // Bigger text needs more width for one line.
