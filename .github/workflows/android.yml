@@ -192,8 +192,13 @@ jobs:
           disable-animations: true
           script: bash .github/e2e/run.sh
 
+      # Report and demo video are nice to have: a hung ffmpeg or apt-get must not run the job
+      # into its 60-minute cap and cancel a passed e2e. The feature tests above still gate the
+      # job; this step can only time out on its own and be marked as a warning.
       - name: Report and demo video
         if: always()
+        timeout-minutes: 5
+        continue-on-error: true
         run: |
           command -v ffmpeg >/dev/null || (sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg fonts-dejavu-core > /dev/null)
           python3 .github/e2e/report.py e2e-out
