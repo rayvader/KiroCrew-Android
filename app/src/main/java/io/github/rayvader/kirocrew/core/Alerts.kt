@@ -15,7 +15,14 @@ data class Alert(
     val priority: String,
     val silenced: Boolean,
     val acked: Boolean,
+    /** The feed's `channel` ("system.member", "system.agent", ...). Null in older feeds. */
+    val channel: String? = null,
+    /** The Bot that posted it. Null in older feeds and for notes no Bot posted. */
+    val member: AlertMember? = null,
 ) {
+    /** The Android notification channel this note goes to. */
+    val route: AlertRoute get() = AlertChannels.route(channel, member)
+
     /** Worth a phone notification: unread, not muted and not passive (the same rule as the bell badge). */
     val loud: Boolean get() = !acked && !silenced && priority != "passive"
 
@@ -61,7 +68,16 @@ object AlertFeed {
             priority = o.text("priority") ?: "normal",
             silenced = o.optBoolean("silenced", false),
             acked = o.optBoolean("acked", false),
+            channel = o.text("channel")?.takeIf { it.isNotBlank() },
+            member = parseMember(o),
         )
+    }
+
+    /** `member: {slug, name}`. Needs a slug; a missing name falls back to the slug later. */
+    private fun parseMember(o: JSONObject): AlertMember? {
+        val m = o.optJSONObject("member") ?: return null
+        val slug = m.text("slug")?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+        return AlertMember(slug, m.text("name")?.trim().orEmpty())
     }
 
     /** What to post now, how many new notes were left out, and the marker to store. */
