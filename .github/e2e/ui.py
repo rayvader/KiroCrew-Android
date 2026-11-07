@@ -11,6 +11,12 @@
                                overlap or stick out
   ui.py top    DUMP TEXT       top y of the node whose text equals TEXT
   ui.py bounds DUMP ID         "x1 y1 x2 y2" of the node with resource id ID
+  ui.py rows   DUMP -          Froyo list lines on screen, top to bottom: "y day|card TEXT"
+  ui.py cards  DUMP -          cards fully in view; exit 1 when a title or Done chip is cut
+  ui.py height DUMP TEXT       height in px of the node whose text equals TEXT
+  ui.py shown  DUMP TEXT       exit 0 when the card titled TEXT is wholly inside the list
+  ui.py lines  DUMP TEXT       about how many lines the card titled TEXT takes
+  ui.py top_shown DUMP TEXT    exit 0 when the top of the card titled TEXT is inside the list
 """
 import re
 import sys
@@ -130,6 +136,126 @@ def widget(path, _arg):
     return 0
 
 
+def _rid(node, name):
+    return node.get("resource-id", "").endswith(":id/" + name)
+
+
+def _inside(inner, outer, slack=1):
+    return (inner[0] >= outer[0] - slack and inner[1] >= outer[1] - slack
+            and inner[2] <= outer[2] + slack and inner[3] <= outer[3] + slack)
+
+
+def rows(path, _arg):
+    """The Froyo list's lines on screen, top to bottom: "y day|card TEXT"."""
+    out = []
+    for node in nodes(path):
+        b = box(node)
+        if not b or b[3] <= b[1]:
+            continue
+        if _rid(node, "froyo_day"):
+            out.append((b[1], "day", node.get("text", "")))
+        elif _rid(node, "froyo_title"):
+            out.append((b[1], "card", node.get("text", "")))
+    for y, kind, text in sorted(out):
+        print(y, kind, text)
+    return 0
+
+
+def cards(path, _arg):
+    """Check every card fully inside the list: its title and Done chip sit wholly inside the
+    card. Prints how many cards were checked; exit 1 on the first one cut or covered."""
+    root = ET.parse(path).getroot()
+    lst = next((box(n) for n in root.iter("node") if _rid(n, "froyo_list")), None)
+    if not lst:
+        print("no list on screen")
+        return 1
+    checked = 0
+    for card in root.iter("node"):
+        if not _rid(card, "froyo_item"):
+            continue
+        cb = box(card)
+        if not cb or cb[1] <= lst[1] + 1 or cb[3] >= lst[3] - 1:
+            continue  # partly scrolled out of view: checked when it is in view
+        title = next((n for n in card.iter("node") if _rid(n, "froyo_title")), None)
+        done = next((n for n in card.iter("node") if _rid(n, "froyo_done")), None)
+        if title is None or not box(title) or not _inside(box(title), cb):
+            print("title cut or missing in card", cb, title.get("text", "") if title is not None else "")
+            return 1
+        if done is None or not box(done) or box(done)[2] - box(done)[0] < 10 or not _inside(box(done), cb):
+            print("Done chip hidden or cut in card", cb, title.get("text", ""))
+            return 1
+        checked += 1
+    print(checked)
+    return 0
+
+
+def shown(path, text):
+    """Exit 0 when the card titled TEXT is wholly inside the widget's list (not cut by its edge)."""
+    root = ET.parse(path).getroot()
+    lst = next((box(n) for n in root.iter("node") if _rid(n, "froyo_list")), None)
+    if not lst:
+        return 1
+    for card in root.iter("node"):
+        if not _rid(card, "froyo_item"):
+            continue
+        cb = box(card)
+        title = next((n for n in card.iter("node") if _rid(n, "froyo_title")), None)
+        if not cb or title is None or title.get("text", "") != text:
+            continue
+        # uiautomator crops a half-hidden card to what shows, so a card touching the list's
+        # top or bottom edge may be cut there: it does not count as wholly in view.
+        if _inside(cb, lst) and cb[1] > lst[1] + 1 and cb[3] < lst[3] - 1:
+            return 0
+    return 1
+
+
+def top_shown(path, text):
+    """Exit 0 when the top of the card titled TEXT (its time line) is wholly inside the list.
+    For a card taller than the list, that is the most of it one screen can show."""
+    root = ET.parse(path).getroot()
+    lst = next((box(n) for n in root.iter("node") if _rid(n, "froyo_list")), None)
+    if not lst:
+        return 1
+    for card in root.iter("node"):
+        if not _rid(card, "froyo_item"):
+            continue
+        title = next((n for n in card.iter("node") if _rid(n, "froyo_title")), None)
+        time = next((n for n in card.iter("node") if _rid(n, "froyo_time")), None)
+        if title is None or time is None or title.get("text", "") != text:
+            continue
+        cb, tb = box(card), box(time)
+        if cb and tb and cb[1] > lst[1] + 1 and tb[3] - tb[1] > 5 and _inside(tb, lst):
+            return 0
+    return 1
+
+
+def lines(path, text):
+    """About how many lines of the title TEXT are on screen: its visible height over the
+    header title's height (same 14sp text, one line, always on screen). 0 when not shown."""
+    ref = next((box(n) for n in nodes(path) if _rid(n, "froyo_name")), None)
+    if not ref or ref[3] <= ref[1]:
+        return 1
+    for n in nodes(path):
+        if _rid(n, "froyo_title") and n.get("text", "") == text:
+            b = box(n)
+            if b:
+                print(round((b[3] - b[1]) / (ref[3] - ref[1])))
+                return 0
+    print(0)
+    return 0
+
+
+def height(path, text):
+    """Height in px of the node whose text equals TEXT."""
+    for node in nodes(path):
+        if node.get("text", "") == text:
+            b = box(node)
+            if b:
+                print(b[3] - b[1])
+                return 0
+    return 1
+
+
 def bounds(path, rid):
     """"x1 y1 x2 y2" of the first node whose resource id ends with :id/RID."""
     for node in nodes(path):
@@ -162,4 +288,6 @@ def jobs(path, pkg):
 if __name__ == "__main__":
     cmd, path, arg = sys.argv[1], sys.argv[2], sys.argv[3]
     sys.exit({"find": find, "menu": menu, "has": has, "switch": switch, "window": window, "jobs": jobs,
-              "widget": widget, "top": top, "bounds": bounds}[cmd](path, arg))
+              "widget": widget, "top": top, "bounds": bounds, "rows": rows, "cards": cards,
+              "height": height, "shown": shown,
+              "lines": lines, "top_shown": top_shown}[cmd](path, arg))

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A day header in the Froyo list: "Today · Fri 6 Nov". Color and bold are set from code. -->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/froyo_day"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingStart="2dp"
+    android:paddingTop="6dp"
+    android:paddingBottom="4dp"
+    android:textColor="@color/widget_day_other"
+    android:textSize="12sp" />

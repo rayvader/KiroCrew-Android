@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Froyo widget card fills, white text on each at 4.5:1 or better (core/Tone, UpcomingDaysTest). -->
+    <color name="widget_tone_late">#C03027</color>
+    <color name="widget_tone_event">#1D69CC</color>
+    <color name="widget_tone_flight">#802698</color>
+    <color name="widget_tone_deadline">#A25607</color>
+    <color name="widget_tone_bill">#1C7437</color>
+    <color name="widget_tone_other">#07776C</color>
+    <color name="widget_day_today">#8AB4F8</color>
+    <color name="widget_day_other">#BDC1C6</color>
+    <color name="widget_chip_card">#FFFFFF</color>
+</resources>

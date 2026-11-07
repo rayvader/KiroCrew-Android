@@ -92,12 +92,13 @@ How it works: the app reads `GET /api/notifications` on your gateway with the ap
 
 A home-screen widget, **Froyo · Upcoming**, lists the open items of the crewmate Froyo (`froyo-personal-butler`): bookings, flights, deliveries and deadlines. Add it from **Settings → Add Froyo widget**, or long-press the home screen and pick it under Widgets.
 
-- The header shows how many items are open and stays at the top. Below it, every open item is in a list you scroll with a finger, soonest first: kind icon (📅 booking, ✈ flight, 📦 delivery, ⏰ deadline), due day and time in 24-hour time (the day only when there is no time), and the title.
-- Due within 24 hours is orange. Overdue is red and says **late**.
-- Tap a row to open Froyo's chat in the app.
-- Tap **Done** on a row. The app asks first. Say yes and the row goes, with **Undo** for 5 seconds. Then the app sends `Done: <title>` to Froyo's chat, and Froyo marks it done. Undo after that sends `Undo done: <title>`. With app lock on, Done asks you to unlock first.
+- The header shows how many items are open and stays at the top. Below it, every open item is in one list you scroll with a finger, laid out like Google Calendar: a header per day (**Today · Fri 6 Nov** in blue, **Tomorrow · Sat 7 Nov**, then **Sun 8 Nov**; the year only when it is not this year), then that day's cards. Items with no date come last, under **No date**.
+- Each card is colored by type: booking blue, flight purple, deadline amber, bill green, other teal. It shows the time (24-hour, or **all day**), the kind icon and the whole title, wrapped onto as many lines as it needs. All-day items come before timed ones.
+- Late items go under Today, in red, with **late · was Wed 4 Nov**.
+- Tap a card to open Froyo's chat in the app.
+- Tap **Done** on a card. The app asks first. Say yes and the row goes, with **Undo** for 5 seconds. Then the app sends `Done: <title>` to Froyo's chat, and Froyo marks it done. Undo after that sends `Undo done: <title>`. With app lock on, Done asks you to unlock first.
 - It refreshes about every 30 minutes, when you open the app, after a Done, and when you tap **⟳** in the header (it shows **Updating…** while it reads). The header says **Updated HH:mm** after a good read. Nothing open shows **Nothing coming up**. When a read fails, the last list stays, with **as of HH:mm** and why: **sign-in** (open the app to sign in), **network**, **timeout**, **server** or **format** (the page held no list the widget can read).
-- Resize it from 4×1 to 4×4. A taller widget shows more rows at once; the list shows whole rows and scrolls to the rest. Rows are never squeezed or overlapped.
+- Resize it from 4×2 to 4×4. A taller widget shows more at once; the list scrolls to the rest. Text follows the system font size and the app's **Auto text size**. Cards are never squeezed or cut.
 
 How it works: the app reads Froyo's thread with `POST /api/members/froyo-personal-butler/thread` and its open items from `GET /api/members/froyo-personal-butler/dashboard` (Froyo's `open_items_live` field, kept current by its sync job, else `open_items`), with the app's own login cookie. Done is a chat message sent with `POST /api/chat`, the same call the dashboard's chat box makes.
 
