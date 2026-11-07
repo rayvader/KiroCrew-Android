@@ -59,9 +59,9 @@ object AlertChannels {
             .take(MAX_SLUG)
 
     /**
-     * The channel's name. The feed's `member.name` as given ("Froyo", "Travel Guru"). The feed
-     * often carries the slug there too ("travel-guru"): a name with no spaces and no capitals
-     * that is made of `-` or `_` words is turned into words ("Travel Guru"). Empty: from the slug.
+     * The channel's name. The feed's `member.name` as given ("Test Butler", "Trip Helper"). The feed
+     * often carries the slug there too ("trip-helper"): a name with no spaces and no capitals
+     * that is made of `-` or `_` words is turned into words ("Trip Helper"). Empty: from the slug.
      */
     fun displayName(name: String?, slug: String): String {
         val n = name?.trim()?.replace(Regex("\\s+"), " ").orEmpty()
