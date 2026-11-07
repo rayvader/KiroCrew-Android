@@ -488,9 +488,13 @@ PY
 }
 
 # The app's notification channels and their groups, as Android reports them.
+# dumpsys lists each app's channels with their group; the cmd form is extra detail where
+# Android has it (it exits non-zero where it does not, which must not stop the test).
 channels_dump() {
-  { adb shell dumpsys notification --noredact; adb shell cmd notification list_channels "$PKG" 0 2>/dev/null; } > "$OUT/channels.txt"
+  adb shell dumpsys notification --noredact > "$OUT/channels.txt" || true
+  adb shell cmd notification list_channels "$PKG" 0 >> "$OUT/channels.txt" 2>/dev/null || true
   cp "$OUT/channels.txt" "$OUT/logs/$FEATURE_ID-channels.txt"
+  grep -q "NotificationChannel{" "$OUT/channels.txt" || fail "Android listed no notification channels"
 }
 # has_channel ID GROUP: the channel ID exists in GROUP.
 has_channel() {
