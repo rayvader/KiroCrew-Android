@@ -3,6 +3,7 @@ package io.github.rayvader.kirocrew
 import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
+import android.app.NotificationChannelGroup
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
@@ -14,6 +15,8 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import io.github.rayvader.kirocrew.core.Alert
+import io.github.rayvader.kirocrew.core.AlertChannels
+import io.github.rayvader.kirocrew.core.AlertRoute
 import io.github.rayvader.kirocrew.core.GatewayUpdateParser
 import io.github.rayvader.kirocrew.core.LiveTags
 import io.github.rayvader.kirocrew.core.Profile
@@ -39,14 +42,35 @@ object Notifier {
     private const val MAX_TITLE = 200
     private const val MAX_BODY = 1000
 
+    const val CH_NEWS = AlertChannels.NEWS
+    const val CH_WATCHES = AlertChannels.WATCHES
+    const val GROUP_BOTS = "bots"
+    const val GROUP_KIRO_CREW = "kirocrew"
+
+    /**
+     * The fixed channels, in two groups: "Bots" (one channel per Bot, made when it first posts)
+     * and "Kiro Crew" (the rest). Channels are never deleted: Android would forget the sound and
+     * mute settings set on them. Creating an existing channel again only updates its name,
+     * description and (when it has none yet) its group; its importance and sound stay as set.
+     */
     fun createChannels(ctx: Context) {
         val nm = ctx.getSystemService(NotificationManager::class.java) ?: return
+        nm.createNotificationChannelGroups(
+            listOf(
+                NotificationChannelGroup(GROUP_BOTS, ctx.getString(R.string.channel_group_bots)),
+                NotificationChannelGroup(GROUP_KIRO_CREW, ctx.getString(R.string.app_name)),
+            )
+        )
         nm.createNotificationChannels(
             listOf(
                 NotificationChannel(CH_ALERTS, ctx.getString(R.string.channel_alerts), NotificationManager.IMPORTANCE_HIGH)
                     .apply { description = ctx.getString(R.string.channel_alerts_desc) },
                 NotificationChannel(CH_CHAT, ctx.getString(R.string.channel_chat), NotificationManager.IMPORTANCE_HIGH)
                     .apply { description = ctx.getString(R.string.channel_chat_desc) },
+                NotificationChannel(CH_NEWS, ctx.getString(R.string.channel_news), NotificationManager.IMPORTANCE_HIGH)
+                    .apply { description = ctx.getString(R.string.channel_news_desc) },
+                NotificationChannel(CH_WATCHES, ctx.getString(R.string.channel_watches), NotificationManager.IMPORTANCE_HIGH)
+                    .apply { description = ctx.getString(R.string.channel_watches_desc) },
                 NotificationChannel(CH_APP, ctx.getString(R.string.channel_app), NotificationManager.IMPORTANCE_DEFAULT)
                     .apply { description = ctx.getString(R.string.channel_app_desc) },
                 NotificationChannel(CH_CONNECTION, ctx.getString(R.string.channel_connection), NotificationManager.IMPORTANCE_MIN)
@@ -54,8 +78,28 @@ object Notifier {
                         description = ctx.getString(R.string.channel_connection_desc)
                         setShowBadge(false)
                     },
-            )
+            ).onEach { it.group = GROUP_KIRO_CREW }
         )
+    }
+
+    /**
+     * The channel for [route]. A Bot's channel is made the first time it posts, and renamed in
+     * place when its name changes (same id, so Android keeps its settings).
+     */
+    private fun channelFor(ctx: Context, route: AlertRoute): String {
+        val name = route.botName ?: return route.id
+        val nm = ctx.getSystemService(NotificationManager::class.java) ?: return route.id
+        val existing = nm.getNotificationChannel(route.id)
+        if (existing == null || existing.name?.toString() != name || existing.group == null) {
+            nm.createNotificationChannelGroup(NotificationChannelGroup(GROUP_BOTS, ctx.getString(R.string.channel_group_bots)))
+            nm.createNotificationChannel(
+                NotificationChannel(route.id, name, NotificationManager.IMPORTANCE_HIGH).apply {
+                    description = ctx.getString(R.string.channel_bot_desc, name)
+                    group = GROUP_BOTS
+                }
+            )
+        }
+        return route.id
     }
 
     /** Android lets the app post notifications (runtime permission on 13+, and not switched off). */
@@ -69,19 +113,24 @@ object Notifier {
     /** A note from the dashboard's notification feed. */
     fun postAlert(ctx: Context, profile: Profile, showServer: Boolean, alert: Alert) {
         val key = "alert:${profile.id}:${alert.ts}"
-        val n = base(ctx, CH_ALERTS)
+        val channel = channelFor(ctx, alert.route)
+        val n = base(ctx, channel)
             .setContentTitle(alert.title.take(MAX_TITLE))
             .setContentText(alert.body.take(MAX_BODY).ifBlank { null })
             .setStyle(NotificationCompat.BigTextStyle().bigText(alert.body.take(MAX_BODY)))
             .setSubText(if (showServer) profile.name else null)
             .setWhen(alert.epochMillis ?: System.currentTimeMillis())
             .setShowWhen(true)
-            .setGroup(GROUP_ALERTS)
+            .setGroup(groupKey(channel))
             .setContentIntent(open(ctx, key, profile.id, alert.path ?: Shortcut.NOTIFICATIONS.path))
             .build()
         post(ctx, key, ID_ALERT, n)
-        postSummary(ctx, profile)
+        postSummary(ctx, profile, channel)
     }
+
+    /** One stack per channel: Android needs a stack's summary on the same channel as its notes. */
+    private fun groupKey(channel: String) =
+        if (channel == CH_ALERTS) GROUP_ALERTS else "$GROUP_ALERTS.$channel"
 
     /** "3 more alerts" when one check finds more than it shows. */
     fun postMore(ctx: Context, profile: Profile, count: Int) {
@@ -96,15 +145,16 @@ object Notifier {
         post(ctx, key, ID_ALERT, n)
     }
 
-    private fun postSummary(ctx: Context, profile: Profile) {
-        val n = base(ctx, CH_ALERTS)
+    private fun postSummary(ctx: Context, profile: Profile, channel: String) {
+        val tag = if (channel == CH_ALERTS) "summary" else "summary:$channel"
+        val n = base(ctx, channel)
             .setContentTitle(ctx.getString(R.string.app_name))
-            .setGroup(GROUP_ALERTS)
+            .setGroup(groupKey(channel))
             .setGroupSummary(true)
             .setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_CHILDREN)
-            .setContentIntent(open(ctx, "summary", profile.id, Shortcut.NOTIFICATIONS.path))
+            .setContentIntent(open(ctx, tag, profile.id, Shortcut.NOTIFICATIONS.path))
             .build()
-        post(ctx, "summary", ID_SUMMARY, n)
+        post(ctx, tag, ID_SUMMARY, n)
     }
 
     /** A toast raised by the dashboard page itself. The same tag replaces the last one, like a browser. */

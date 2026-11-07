@@ -303,6 +303,11 @@ def make_handler(state):
                     "silenced": q.get("silenced") == "1",
                     "acked": False,
                 }
+                # Like the real feed: which kind of note, and the Bot that posted it.
+                if q.get("channel"):
+                    note["channel"] = q["channel"]
+                if q.get("member_slug"):
+                    note["member"] = {"slug": q["member_slug"], "name": q.get("member_name", "")}
                 state.push(note)
                 return self.send(200, json.dumps(note), "application/json")
             if p == "/test/arm-toast":

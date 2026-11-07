@@ -439,6 +439,74 @@ f_instant_alerts() {
   ! grep -qF "E2E muted note" "$OUT/notif.txt" || fail "muted note was shown"
   ! grep -qF "E2E passive note" "$OUT/notif.txt" || fail "passive note was shown"
   check "muted and passive notes are skipped, like the bell badge"
+
+  # Notification types: a Bot's note gets its own channel in the Bots group, an agent note
+  # goes to "News and agents" in the Kiro Crew group. Made-up Bot name.
+  push_note --data-urlencode "title=E2E bot note" --data-urlencode "channel=system.member" \
+    --data-urlencode "member_slug=e2e-demo-bot" --data-urlencode "member_name=E2E Demo Bot"
+  push_note --data-urlencode "title=E2E agent note" --data-urlencode "channel=system.agent"
+  wait_notif "E2E bot note" 20
+  wait_notif "E2E agent note" 20
+  channels_dump
+  has_channel bot_e2e-demo-bot bots || fail "no 'bot_e2e-demo-bot' channel in the Bots group"
+  grep -qF "E2E Demo Bot" "$OUT/channels.txt" || fail "the Bot's channel is not named 'E2E Demo Bot'"
+  check "a Bot's note makes its own channel 'E2E Demo Bot' in the Bots group"
+  has_channel news kirocrew || fail "no 'news' channel in the Kiro Crew group"
+  has_channel alerts kirocrew || fail "the old 'alerts' channel is gone or not in the Kiro Crew group"
+  check "an agent note goes to 'News and agents'; 'Dashboard alerts' is kept, in the Kiro Crew group"
+  python3 - "$OUT/notif.txt" <<'PY' || fail "the notes are not posted on their channels"
+import re, sys
+text = open(sys.argv[1], encoding="utf-8", errors="replace").read()
+def channel_of(title):
+    for block in re.split(r"\n\s*NotificationRecord\(", text):
+        if title in block:
+            m = re.search(r"channel=([\w.-]+)", block)
+            return m.group(1) if m else None
+bot, agent = channel_of("E2E bot note"), channel_of("E2E agent note")
+print("bot note on", bot, "| agent note on", agent)
+sys.exit(0 if bot == "bot_e2e-demo-bot" and agent == "news" else 1)
+PY
+  check "each note is posted on its own channel"
+  # Push the same Bot again under a new name: the channel is renamed in place.
+  push_note --data-urlencode "title=E2E bot note two" --data-urlencode "channel=system.member" \
+    --data-urlencode "member_slug=e2e-demo-bot" --data-urlencode "member_name=E2E Demo Bot Renamed"
+  wait_notif "E2E bot note two" 20
+  channels_dump
+  grep -qF "E2E Demo Bot Renamed" "$OUT/channels.txt" || fail "the Bot's channel was not renamed"
+  has_channel bot_e2e-demo-bot bots || fail "the renamed Bot's channel left the Bots group"
+  check "a renamed Bot keeps its channel, with the new name"
+  # The settings page Raymond uses to set sound and mute per channel.
+  adb shell am start -a android.settings.APP_NOTIFICATION_SETTINGS \
+    --es android.provider.extra.APP_PACKAGE "$PKG" >/dev/null
+  local i
+  for i in $(seq 1 15); do has_text "E2E Demo Bot Renamed" && break; sleep 1; done
+  sleep 2
+  adb exec-out screencap -p > "$OUT/shots/notif-channels.png" 2>/dev/null || true
+  has_text "Bots" || fail "the app's notification settings do not show the Bots group"
+  check "Android's notification settings list the Bots group"
+  back
+}
+
+# The app's notification channels and their groups, as Android reports them.
+# dumpsys lists each app's channels with their group; the cmd form is extra detail where
+# Android has it (it exits non-zero where it does not, which must not stop the test).
+channels_dump() {
+  adb shell dumpsys notification --noredact > "$OUT/channels.txt" || true
+  adb shell cmd notification list_channels "$PKG" 0 >> "$OUT/channels.txt" 2>/dev/null || true
+  cp "$OUT/channels.txt" "$OUT/logs/$FEATURE_ID-channels.txt"
+  grep -q "NotificationChannel{" "$OUT/channels.txt" || fail "Android listed no notification channels"
+}
+# has_channel ID GROUP: the channel ID exists in GROUP.
+has_channel() {
+  python3 - "$OUT/channels.txt" "$1" "$2" <<'PY'
+import re, sys
+text, cid, group = open(sys.argv[1], encoding="utf-8", errors="replace").read(), sys.argv[2], sys.argv[3]
+for m in re.finditer(r"NotificationChannel\{[^}]*\}", text):
+    c = m.group(0)
+    if "mId='%s'" % cid in c and "mGroup='%s'" % group in c:
+        sys.exit(0)
+sys.exit(1)
+PY
 }
 
 f_periodic_alerts() {

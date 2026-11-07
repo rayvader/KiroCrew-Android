@@ -84,7 +84,14 @@ Pick how bell notes arrive in **Settings → Notifications → Background alerts
 | Every 15 minutes (default), 30 minutes or 1 hour | Up to the interval. Android can wait longer when the phone sleeps. | Very low |
 | Instant | A few seconds | Higher. Keeps one connection open and shows a small "Instant alerts are on" notice. |
 
-**Sound and vibration** opens Android's settings for the app. Each kind of alert has its own channel there: Dashboard alerts, Chat updates, App updates and sign-in, Instant alerts connection.
+**Notification types** opens Android's settings for the app, where you set sound, vibration and mute per channel. Channels come in two groups:
+
+| Group | Channels |
+|---|---|
+| Bots | one per Bot (named after it, made the first time it posts) |
+| Kiro Crew | News and agents (agent messages, news, watch cards), Watches, Chat updates, Dashboard alerts (everything else), App updates and sign-in, Instant alerts connection |
+
+A Bot's note goes to its own channel even when it is an agent message. A Bot that is renamed keeps its channel and settings. Channels are never deleted, so your settings stay.
 
 How it works: the app reads `GET /api/notifications` on your gateway with the app's own login cookie. Instant mode also listens to the dashboard's live `/api/stream`. When the login runs out, the app renews it through `/api/auth/refresh`, the same way the dashboard page does. Nothing goes through Google or any other server.
 
@@ -129,7 +136,7 @@ Open **Settings** from the app menu.
 | Area | Options |
 |---|---|
 | Server | Several servers, start page (or a custom path), fast page switching |
-| Notifications | On or off. Background alerts: only while open, every 15/30/60 minutes, or instant. Sound and vibration per kind of alert. |
+| Notifications | On or off. Background alerts: only while open, every 15/30/60 minutes, or instant. Notification types: sound, vibration and mute per Bot and per kind of alert. |
 | Look | Light, dark or system theme. 6 accent colors. Force-dark pages. Text size 50–200 %, or **Auto text size**: slightly bigger text on a folded phone (110 %), normal size on an unfolded phone or a tablet (100 %), and the slider adjusts it. Turning the phone does not change it. Top bar and bottom bar on or off. Pick up to 5 bottom-bar pages. Full screen. |
 | Behavior | Pull to refresh, keep screen on, desktop mode, open other sites in browser, double back to exit, custom CSS, user-agent suffix |
 | Security | App lock (fingerprint, face or screen lock) with timeout. Privacy screen (no screenshots, hidden in recents). |
@@ -151,7 +158,7 @@ Open **Settings** from the app menu.
 | Microphone does not work | Use an `https` address. Browsers block the mic on plain `http`. |
 | QR scan fails | Make a fresh code in **Connect your phone**. |
 | Update will not install | The old app was signed with a different key. Uninstall it, then install the new one. |
-| No notifications | Settings → Notifications. If it says Android is blocking them, tap **Sound and vibration** and allow them. |
+| No notifications | Settings → Notifications. If it says Android is blocking them, tap **Notification types** and allow them. |
 | Alerts come late | Pick **Instant**. On Samsung, also set the app's battery use to **Unrestricted** (Android settings → Apps → Kiro Crew → Battery). |
 | "Sign in again for alerts" | Open the app once. If the login page shows, sign in or scan a new QR code. |
 | Update says "checksum does not match" | The download was damaged. Try again on a better connection. |

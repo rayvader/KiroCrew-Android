@@ -116,13 +116,19 @@ The app saves the server and signs you in.<br><br>
     <string name="notify_blocked">Android is blocking them. Tap Sound and vibration to allow.</string>
     <string name="notify_denied_toast">Notifications are off. Turn them on in Sound and vibration.</string>
     <string name="alert_mode">Background alerts</string>
-    <string name="notify_system">Sound and vibration</string>
-    <string name="notify_system_summary">Choose sounds, vibration and pop-ups for each kind of alert</string>
+    <string name="notify_system">Notification types</string>
+    <string name="notify_system_summary">Sound, vibration and mute for each Bot and each kind of alert</string>
 
     <string name="channel_alerts">Dashboard alerts</string>
     <string name="channel_alerts_desc">Notes from the dashboard bell, like approvals and finished jobs</string>
     <string name="channel_chat">Chat updates</string>
     <string name="channel_chat_desc">A chat finished or is waiting for you</string>
+    <string name="channel_news">News and agents</string>
+    <string name="channel_news_desc">Messages from agents, news and watch cards</string>
+    <string name="channel_watches">Watches</string>
+    <string name="channel_watches_desc">Updates from things the dashboard is watching for you</string>
+    <string name="channel_group_bots">Bots</string>
+    <string name="channel_bot_desc">Notes from %1$s</string>
     <string name="channel_app">App updates and sign-in</string>
     <string name="channel_app_desc">New app and Kiro Crew versions, and when a server needs you to sign in again</string>
     <string name="gateway_update_check">Check for Kiro Crew updates</string>
