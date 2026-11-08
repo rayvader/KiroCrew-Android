@@ -80,6 +80,8 @@ object FroyoWidgets {
     private const val SP_ERROR = "froyo_error"
     private const val SP_REFRESHING_AT = "froyo_refreshing_at"
     private const val SP_REASON = "froyo_fail_reason"
+    /** When the last read started, good or bad: the header's "tried HH:mm". */
+    private const val SP_TRIED_AT = "froyo_tried_at"
 
     /** The header's refresh button. Only this app can send it: the button's intent is explicit. */
     const val ACTION_REFRESH = "io.github.rayvader.kirocrew.FROYO_REFRESH"
@@ -143,6 +145,8 @@ object FroyoWidgets {
 
     /** Reads Froyo's thread and open items from the active server. Off the main thread. */
     fun fetch(ctx: Context): Error {
+        // First, before anything can fail: a read that never finishes still shows as tried.
+        sp(ctx).edit { putLong(SP_TRIED_AT, System.currentTimeMillis()) }
         val profile = profile(ctx) ?: return saveError(ctx, Error.NO_SERVER, null, "no server")
         val client = AlertsClient(ctx)
         return try {
@@ -237,6 +241,7 @@ object FroyoWidgets {
         sp(ctx).edit {
             remove(SP_ITEMS)
             remove(SP_ITEMS_AT)
+            remove(SP_TRIED_AT)
             remove(SP_HIDDEN)
             remove(SP_SLOT)
             remove(SP_MEMBER)
@@ -324,17 +329,30 @@ object FroyoWidgets {
         // line, so no row is given up for it.
         val open = ctx.getString(R.string.froyo_open, items.size)
         val refreshing = Upcoming.isRefreshing(sp(ctx).getLong(SP_REFRESHING_AT, 0L), System.currentTimeMillis())
-        val line = Upcoming.syncLine(refreshing, error != Error.NONE, loaded, at, ZoneId.systemDefault(), savedReason(ctx))
-        val count = when (line.note) {
+        val line = Upcoming.syncLine(
+            refreshing,
+            error != Error.NONE,
+            loaded,
+            at,
+            ZoneId.systemDefault(),
+            savedReason(ctx),
+            triedMs = sp(ctx).getLong(SP_TRIED_AT, 0L),
+            nowMs = System.currentTimeMillis(),
+        )
+        val note = when (line.note) {
             SyncNote.UPDATED -> ctx.getString(R.string.froyo_updated, open, line.time)
             SyncNote.AS_OF -> line.reason?.let { ctx.getString(R.string.froyo_as_of_why, open, line.time, it.word) }
                 ?: ctx.getString(R.string.froyo_as_of, open, line.time)
             SyncNote.UPDATING -> ctx.getString(R.string.froyo_updating_count, open)
             SyncNote.NONE -> open
         }
-        // Narrow widget (an unfolded screen gives it fewer dp): the count under the title.
+        // "· tried 20:40" when a read was tried after the last good one, "· not updating" when
+        // nothing was even tried for 2 h: a stuck job shows instead of a quiet old time.
+        val count = note + Upcoming.syncTail(line)
+        // Narrow widget (an unfolded screen gives it fewer dp), or a long count: the count goes
+        // under the title, so none of it is cut.
         val widthDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 0).toFloat()
-        val stacked = UpcomingDays.stackHeader(widthDp, scale * ctx.resources.configuration.fontScale)
+        val stacked = UpcomingDays.stackHeader(widthDp, scale * ctx.resources.configuration.fontScale, count.length)
         v.setTextViewText(R.id.froyo_count, if (stacked) "" else count)
         v.setViewVisibility(R.id.froyo_count, if (stacked) View.GONE else View.VISIBLE)
         v.setTextViewText(R.id.froyo_count_below, if (stacked) count else "")

@@ -1275,6 +1275,10 @@ PY
   check "a failed refresh keeps the rows and says 'as of HH:mm'"
   has_text "· network" || fail "the header does not say why the read failed (503 -> network)"
   check "the header says why: 'as of HH:mm · network'"
+  dump
+  grep -qE 'tried [0-9]{2}:[0-9]{2}' "$OUT/ui.xml" || fail "the header does not say when the failed read was tried"
+  check "a failed read says when it was tried: '· tried HH:mm' (24 h)"
+  adb exec-out screencap -p > "$OUT/shots/froyo-widget-tried.png" 2>/dev/null || true
 
   # A 200 with no readable list is a format problem, and says so.
   curl -s "$GW/test/froyo?mode=bad" >/dev/null
