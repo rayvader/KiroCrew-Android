@@ -129,11 +129,21 @@ object UpcomingDays {
      */
     const val HEADER_ONE_LINE_DP = 290f
 
-    /** True when the header should put the count under the title. Unknown width: one line. */
-    fun stackHeader(widthDp: Float, textScale: Float): Boolean {
+    /** [HEADER_ONE_LINE_DP] fits a count this long: "5 open · Updated 05:48". */
+    const val HEADER_BASE_CHARS = 22
+
+    /** A 12 sp character, a little wide, so a longer count is never cut. */
+    const val COUNT_CHAR_DP = 6.5f
+
+    /**
+     * True when the header should put the count under the title. Unknown width: one line.
+     * [countChars] is the count's length: a longer one ("· tried 20:40") needs more width.
+     */
+    fun stackHeader(widthDp: Float, textScale: Float, countChars: Int = HEADER_BASE_CHARS): Boolean {
         if (widthDp <= 0f) return false
         val scale = if (textScale > 0f) textScale else 1f
-        return widthDp / scale < HEADER_ONE_LINE_DP
+        val extra = maxOf(0, countChars - HEADER_BASE_CHARS) * COUNT_CHAR_DP
+        return widthDp / scale < HEADER_ONE_LINE_DP + extra
     }
 
     /** WCAG contrast ratio of two opaque ARGB colors, 1.0 to 21.0. */

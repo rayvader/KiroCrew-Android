@@ -194,6 +194,22 @@ class UpcomingDaysTest {
     }
 
     @Test
+    fun aLongCountMovesUnderTheTitleSoNothingIsCut() {
+        val short = "5 open · Updated 05:48"
+        val tried = "5 open · Updated 05:48 · tried 20:40"
+        val all = "9 open · as of 05:48 · format · tried 06:10 · not updating"
+        // The usual count is unchanged: one line on a phone 4x2.
+        assertFalse(UpcomingDays.stackHeader(348f, 1.15f, short.length))
+        assertFalse(UpcomingDays.stackHeader(362f, 1f, short.length))
+        // Longer counts need more width: the same widget stacks.
+        assertTrue(UpcomingDays.stackHeader(362f, 1f, tried.length))
+        assertTrue(UpcomingDays.stackHeader(362f, 1f, all.length))
+        // A wide widget keeps it on one line.
+        assertFalse(UpcomingDays.stackHeader(500f, 1f, tried.length))
+        assertFalse(UpcomingDays.stackHeader(0f, 1f, all.length))
+    }
+
+    @Test
     fun aLongTitleIsKeptWhole() {
         val long = "E2E made-up title that is sixty characters long, to wrap ok."
         assertEquals(60, long.length)

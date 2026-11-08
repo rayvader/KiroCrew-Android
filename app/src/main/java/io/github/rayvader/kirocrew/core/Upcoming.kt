@@ -30,8 +30,18 @@ enum class DueState { NONE, LATER, SOON, LATE }
 /** What the header says after the count: when the list was read, or that it is being read. */
 enum class SyncNote { NONE, UPDATED, AS_OF, UPDATING }
 
-/** [note] plus the 24 h "HH:mm" it names (empty for [SyncNote.NONE] and [SyncNote.UPDATING]). */
-data class SyncLine(val note: SyncNote, val time: String, val reason: FailReason? = null)
+/**
+ * [note] plus the 24 h "HH:mm" it names (empty for [SyncNote.NONE] and [SyncNote.UPDATING]).
+ * [tried] is the 24 h time of the last read tried, when it is newer than [time], else "".
+ * [stuck] is true when nothing was read or tried for [Upcoming.STUCK_MS]: the job is not running.
+ */
+data class SyncLine(
+    val note: SyncNote,
+    val time: String,
+    val reason: FailReason? = null,
+    val tried: String = "",
+    val stuck: Boolean = false,
+)
 
 /** Why the last read failed, in a word the header can show next to "as of HH:mm". */
 enum class FailReason(val word: String) {
@@ -247,6 +257,10 @@ object Upcoming {
      * After a failed read with a saved list: "as of HH:mm", the time of the list still shown.
      * Nothing when no list was ever read. [atMs] is when the shown list was read; the time is
      * 24 h in [zone].
+     *
+     * [triedMs] is when the last read started, good or bad (0: never). When it is newer than
+     * [atMs] the line also says "tried HH:mm". When [atMs] and [triedMs] are both older than
+     * [STUCK_MS] at [nowMs], it says "not updating": no read is even being tried.
      */
     fun syncLine(
         refreshing: Boolean,
@@ -255,12 +269,35 @@ object Upcoming {
         atMs: Long,
         zone: ZoneId,
         reason: FailReason? = null,
+        triedMs: Long = 0L,
+        nowMs: Long = 0L,
     ): SyncLine {
         if (refreshing) return SyncLine(SyncNote.UPDATING, "")
         if (!loaded || atMs <= 0) return SyncLine(SyncNote.NONE, "")
-        val time = java.time.Instant.ofEpochMilli(atMs).atZone(zone).format(DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT))
-        return if (failed) SyncLine(SyncNote.AS_OF, time, reason) else SyncLine(SyncNote.UPDATED, time)
+        val time = hhmm(atMs, zone)
+        val tried = if (triedMs > atMs) hhmm(triedMs, zone) else ""
+        val stuck = nowMs > 0 && nowMs - atMs > STUCK_MS && (triedMs <= 0 || nowMs - triedMs > STUCK_MS)
+        return if (failed) {
+            SyncLine(SyncNote.AS_OF, time, reason, tried, stuck)
+        } else {
+            SyncLine(SyncNote.UPDATED, time, null, tried, stuck)
+        }
     }
+
+    /** No good read and no read tried for this long: the header says "not updating". */
+    const val STUCK_MS = 2L * 60 * 60 * 1000
+
+    const val TRIED = "tried"
+    const val NOT_UPDATING = "not updating"
+
+    /** What follows the header's "Updated / as of" part: " · tried 20:40", " · not updating", both, or "". */
+    fun syncTail(line: SyncLine): String = buildString {
+        if (line.tried.isNotEmpty()) append(" · $TRIED ${line.tried}")
+        if (line.stuck) append(" · $NOT_UPDATING")
+    }
+
+    private fun hhmm(ms: Long, zone: ZoneId): String =
+        java.time.Instant.ofEpochMilli(ms).atZone(zone).format(DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT))
 
     /**
      * Why a read failed, from what the server answered. [authRequired] is the login check

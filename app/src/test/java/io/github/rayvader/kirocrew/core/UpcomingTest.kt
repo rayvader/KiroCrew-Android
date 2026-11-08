@@ -247,6 +247,58 @@ class UpcomingTest {
         assertEquals(SyncNote.UPDATING, Upcoming.syncLine(true, true, false, 0L, zone).note)
     }
 
+    private fun sgt(h: Int, m: Int, day: Int = 8) =
+        java.time.ZonedDateTime.of(2026, 11, day, h, m, 0, 0, zone).toInstant().toEpochMilli()
+
+    private fun header(line: SyncLine): String {
+        val head = when (line.note) {
+            SyncNote.UPDATED -> "5 open · Updated ${line.time}"
+            SyncNote.AS_OF -> "5 open · as of ${line.time}" + (line.reason?.let { " · ${it.word}" } ?: "")
+            SyncNote.UPDATING -> "5 open · Updating…"
+            SyncNote.NONE -> "5 open"
+        }
+        return head + Upcoming.syncTail(line)
+    }
+
+    @Test
+    fun headerAFreshGoodReadSaysOnlyUpdated() {
+        // The read started at 20:39:30 and saved at 20:40: tried is not newer, so not shown.
+        val at = sgt(20, 40)
+        val line = Upcoming.syncLine(false, false, true, at, zone, triedMs = at - 30_000, nowMs = sgt(20, 45))
+        assertEquals(SyncLine(SyncNote.UPDATED, "20:40"), line)
+        assertEquals("5 open · Updated 20:40", header(line))
+    }
+
+    @Test
+    fun headerAReadTriedAfterTheLastGoodOneSaysTried() {
+        val line = Upcoming.syncLine(false, false, true, sgt(5, 48), zone, triedMs = sgt(20, 40), nowMs = sgt(20, 41))
+        assertEquals("5 open · Updated 05:48 · tried 20:40", header(line))
+        assertFalse(line.stuck)
+        // A failed read keeps its reason, then says when it was tried.
+        val failed = Upcoming.syncLine(false, true, true, sgt(5, 48), zone, FailReason.NETWORK, sgt(20, 40), sgt(20, 41))
+        assertEquals("5 open · as of 05:48 · network · tried 20:40", header(failed))
+    }
+
+    @Test
+    fun headerNoReadTriedFor2HoursSaysNotUpdating() {
+        // Last good read 05:48, nothing tried since: the job is stuck.
+        val never = Upcoming.syncLine(false, false, true, sgt(5, 48), zone, triedMs = 0L, nowMs = sgt(20, 40))
+        assertEquals("5 open · Updated 05:48 · not updating", header(never))
+        // Tried at 06:10, but nothing for 2 h since: both show.
+        val old = Upcoming.syncLine(false, true, true, sgt(5, 48), zone, FailReason.FORMAT, sgt(6, 10), sgt(20, 40))
+        assertEquals("5 open · as of 05:48 · format · tried 06:10 · not updating", header(old))
+        // A read tried within 2 h: not stuck, even though the good one is old.
+        val recent = Upcoming.syncLine(false, true, true, sgt(5, 48), zone, FailReason.NETWORK, sgt(19, 0), sgt(20, 40))
+        assertFalse(recent.stuck)
+        // The good read itself within 2 h: not stuck, with or without a tried time.
+        assertFalse(Upcoming.syncLine(false, false, true, sgt(19, 0), zone, nowMs = sgt(20, 40)).stuck)
+        // Exactly 2 h is not yet stuck; no clock given never says stuck.
+        assertFalse(Upcoming.syncLine(false, false, true, sgt(18, 40), zone, nowMs = sgt(20, 40)).stuck)
+        assertFalse(Upcoming.syncLine(false, false, true, sgt(5, 48), zone).stuck)
+        // While a refresh runs, only "Updating…".
+        assertEquals("5 open · Updating…", header(Upcoming.syncLine(true, false, true, sgt(5, 48), zone, nowMs = sgt(20, 40))))
+    }
+
     @Test
     fun refreshSpinnerStopsWhenDoneOrStale() {
         val t = 10_000_000L
