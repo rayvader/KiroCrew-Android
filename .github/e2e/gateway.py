@@ -5,9 +5,6 @@ It speaks the parts of the dashboard API the app relies on:
 - dashboard pages (a tiny single-page app that reports what the app gave it)
 - login cookies, GET /api/notifications, GET /api/stream (SSE), POST /api/auth/refresh
 - a normal file download
-- the crewmate Froyo's thread, dashboard (open items) and POST /api/chat, for the widget
-
-Every Froyo item here is made up for the tests.
 
 Test-only controls live under /test/ (push a note, expire the login, read the
 request log). The emulator reaches this host as 10.0.2.2.
@@ -20,7 +17,7 @@ import queue
 import secrets
 import threading
 import time
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
@@ -139,13 +136,6 @@ class State:
         self.notes = []
         self.listeners = []
         self.log = []
-        # Froyo's open items and the chat messages sent to its thread.
-        self.froyo = froyo_items()
-        self.chats = []
-        # True while a test wants Froyo's dashboard read to fail (the widget keeps its list).
-        self.froyo_down = False
-        # True while a test wants the dashboard to answer 200 with no readable list.
-        self.froyo_bad = False
 
     def now_ts(self):
         # Strictly increasing timestamps, so two notes pushed back to back never tie.
@@ -162,66 +152,6 @@ class State:
             self.notes.append(note)
             for q in list(self.listeners):
                 q.put(note)
-
-
-FROYO_SLUG = "froyo-personal-butler"
-FROYO_SLOT = "member-froyo-e2e"
-FROYO_MEMBER = "Froyo E2E"
-
-
-# 60 characters, made up: the widget must wrap it fully, never cut it.
-LONG_TITLE = "E2E made-up title that is sixty characters long, to wrap ok."
-
-
-def froyo_days():
-    """Made-up items across days, for the day-header layout: late, today (all day and timed),
-    tomorrow, two later days, next year, and one with no date."""
-    today = date.today()
-    d = lambda n: (today + timedelta(days=n)).isoformat()
-    return [
-        {"n": 1, "title": "E2E late parcel", "due": d(-2), "kind": "delivery", "flag": None},
-        {"n": 2, "title": "E2E all-day errand", "due": d(0), "kind": "booking", "flag": None},
-        {"n": 3, "title": "E2E flight home", "due": d(1) + " 14:10", "kind": "flight", "flag": None},
-        {"n": 4, "title": LONG_TITLE, "due": d(2), "kind": "bill", "flag": None},
-        {"n": 5, "title": "E2E form deadline", "due": d(3) + " 09:30", "kind": "deadline", "flag": None},
-        {"n": 6, "title": "E2E next year trip", "due": date(today.year + 1, 1, 15).isoformat(), "kind": "flight", "flag": None},
-        {"n": 7, "title": "E2E renewal no date", "due": None, "kind": "bill", "flag": None},
-    ]
-
-
-def froyo_items(many=False):
-    """Made-up items, dated from today: one late, one today, two later, one with no date.
-    many=True adds three more, so the widget's list has to scroll."""
-    today = date.today()
-    d = lambda n: (today + timedelta(days=n)).isoformat()
-    extra = [
-        {"n": 5 + i, "title": "E2E test extra %d" % i, "due": d(14 + i), "kind": "booking", "flag": None}
-        for i in (1, 2, 3)
-    ] if many else []
-    return extra + [
-        {"n": 1, "title": "E2E test parcel", "due": d(-1), "kind": "delivery", "flag": None},
-        {"n": 2, "title": "E2E test dinner", "due": d(0), "kind": "booking", "flag": None},
-        {"n": 3, "title": "E2E test flight", "due": d(3) + " 14:10", "kind": "flight", "flag": None},
-        {"n": 4, "title": "E2E test form", "due": d(10), "kind": "deadline", "flag": None},
-        {"n": 5, "title": "E2E test renewal", "due": None, "kind": "bill", "flag": None},
-    ]
-
-
-def froyo_dashboard(items):
-    """Like GET /api/members/{slug}/dashboard for Froyo's page v4: the values sit in a JSON data
-    island. open_items_live (the sync job's list, an object) is current; the agentic open_items
-    lags behind and carries one stale row, which the widget must never show."""
-    stale = items + [{"n": 99, "title": "E2E stale row", "due": None, "kind": "deadline", "flag": None}]
-    island = json.dumps({
-        "fields": {"open_items": stale, "open_items_live": {"items": items, "as_of": "now"}, "items_as_of": "now"},
-        "agentic": ["open_items", "items_as_of"],
-    })
-    island = island.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
-    html = ('<!doctype html><html><head><title>Froyo</title></head><body>'
-            '<script type="application/json" id="kirocrew-dashboard-data">' + island + '</script>'
-            '<div id="open"></div></body></html>')
-    return json.dumps({"instance_version": 4, "dashboard": "e2e", "state": "live", "scripts": True,
-                       "fields": ["items_as_of", "open_items", "open_items_live"], "rendered_html": html})
 
 
 def make_handler(state):
@@ -332,35 +262,6 @@ def make_handler(state):
                 with state.lock:
                     state.gw_update = {"latest": q.get("latest", ""), "status": q.get("status", "succeeded")}
                 return self.send(200, "ok")
-            if p == "/test/froyo":
-                # mode=reset (the made-up list), many (8 items, more than fit), days (spread over
-                # days, with a 60-character title), empty,
-                # down (503) or bad (200, no list): reads fail and the list is kept; any other
-                # mode brings it back up.
-                mode = q.get("mode")
-                with state.lock:
-                    state.froyo_down = mode == "down"
-                    state.froyo_bad = mode == "bad"
-                    if mode not in ("down", "bad"):
-                        state.froyo = ([] if mode == "empty" else froyo_days() if mode == "days"
-                                       else froyo_items(many=mode == "many"))
-                        state.chats = []
-                return self.send(200, "ok")
-            if p == "/test/chats":
-                with state.lock:
-                    return self.send(200, json.dumps(state.chats), "application/json")
-            if p == f"/api/members/{FROYO_SLUG}/dashboard":
-                if not self.signed_in():
-                    return self.send(401, "{}", "application/json")
-                if q.get("member") != FROYO_MEMBER:
-                    return self.send(400, json.dumps({"code": "missing_member"}), "application/json")
-                with state.lock:
-                    items, down, bad = list(state.froyo), state.froyo_down, state.froyo_bad
-                if down:
-                    return self.send(503, json.dumps({"error": "down"}), "application/json")
-                if bad:
-                    return self.send(200, json.dumps({"state": "empty"}), "application/json")
-                return self.send(200, froyo_dashboard(items), "application/json")
             if p == "/api/update/check":
                 if not self.signed_in():
                     return self.send(401, "{}", "application/json")
@@ -396,30 +297,6 @@ def make_handler(state):
             u = urlparse(self.path)
             length = int(self.headers.get("Content-Length") or 0)
             raw = self.rfile.read(length) if length else b""
-            if u.path in (f"/api/members/{FROYO_SLUG}/thread", "/api/chat"):
-                # Like the gateway's CSRF check: a POST without the dashboard's Origin is refused.
-                if not (self.headers.get("Origin") or "").startswith("http://10.0.2.2:"):
-                    return self.send(403, "CSRF check failed: request origin not allowed.")
-                if not self.signed_in():
-                    return self.send(401, "{}", "application/json")
-            if u.path == f"/api/members/{FROYO_SLUG}/thread":
-                body = {"slot_key": FROYO_SLOT, "slug": FROYO_SLUG, "member": FROYO_MEMBER}
-                return self.send(200, json.dumps(body), "application/json")
-            if u.path == "/api/chat":
-                try:
-                    msg = json.loads(raw or b"{}")
-                except ValueError:
-                    return self.send(400, "{}", "application/json")
-                text, slot = str(msg.get("message", "")), msg.get("slot")
-                with state.lock:
-                    state.chats.append({"slot": slot, "message": text})
-                    # Like Froyo's ack rules: "Done: <title>" acks it, "Undo done: <title>" brings it back.
-                    if slot == FROYO_SLOT and text.startswith("Done: "):
-                        state.froyo = [i for i in state.froyo if i["title"] != text[6:]]
-                    elif slot == FROYO_SLOT and text.startswith("Undo done: "):
-                        back = [i for i in froyo_items() if i["title"] == text[11:]]
-                        state.froyo = [i for i in state.froyo if i["title"] != text[11:]] + back
-                return self.send(200, "data: [DONE]\n\n", "text/event-stream")
             if u.path == "/api/auth/refresh":
                 if state.refresh_allowed and self.cookies().get("kc_refresh") == "r1":
                     return self.send(200, "{}", "application/json", self.new_session_cookies()[:1])

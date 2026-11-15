@@ -90,7 +90,7 @@ class UrlToolsTest {
         assertEquals("http://h:5476", UrlTools.normalizeServerUrl("h:5476/settings/overview"))
         assertEquals("https://h.ts.net", UrlTools.normalizeServerUrl("https://h.ts.net/api/notifications"))
         // A real sub-path the gateway is served under is kept, up to the page.
-        assertEquals("https://k.example.com/base", UrlTools.normalizeServerUrl("https://k.example.com/base/members/froyo"))
+        assertEquals("https://k.example.com/base", UrlTools.normalizeServerUrl("https://k.example.com/base/members/alpha"))
         assertEquals("https://k.example.com/base", UrlTools.normalizeServerUrl("https://k.example.com/base"))
     }
 

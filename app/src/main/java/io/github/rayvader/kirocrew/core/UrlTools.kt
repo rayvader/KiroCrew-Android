@@ -58,7 +58,7 @@ object UrlTools {
      * First path segments that are dashboard pages or its API, never part of where the
      * gateway is served. A server URL copied from the browser ("…/chat/my-chat") keeps
      * that page in its path, and every API call joined onto it then reaches the page's
-     * catch-all instead of /api: the widget and alerts silently stop updating.
+     * catch-all instead of /api: alerts silently stop arriving.
      */
     private val PAGE_ROOTS = setOf(
         "chat", "schedule", "artifacts", "notifications", "capabilities", "apps",

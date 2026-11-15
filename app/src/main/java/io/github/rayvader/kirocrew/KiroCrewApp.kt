@@ -30,6 +30,7 @@ class KiroCrewApp : Application(), Application.ActivityLifecycleCallbacks {
     override fun onCreate() {
         super.onCreate()
         PreferenceManager.setDefaultValues(this, R.xml.preferences, false)
+        LegacyWidget.dropOnce(this)
         Theming.applyNightMode(Prefs(this).theme)
         Notifier.createChannels(this)
         registerActivityLifecycleCallbacks(this)
