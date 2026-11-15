@@ -27,12 +27,12 @@ class CodecsTest {
 
     @Test
     fun profiles_savedPagePathHealsOnRead() {
-        // A server saved from a copied chat link: the widget's API calls hit the page, not /api.
+        // A server saved from a copied chat link: API calls hit the page, not /api.
         val saved = ProfileCodec.encode(listOf(Profile("p", "Home", "https://h.ts.net/chat/android-travel-planner-app")))
         val p = ProfileCodec.decode(saved).single()
         assertEquals("https://h.ts.net", p.baseUrl)
         assertEquals("p", p.id)
-        assertEquals("https://h.ts.net/api/members/froyo-personal-butler/thread", UrlTools.buildUrl(p.baseUrl, Upcoming.THREAD_PATH))
+        assertEquals("https://h.ts.net/api/notifications", UrlTools.buildUrl(p.baseUrl, "/api/notifications"))
     }
 
     @Test
